@@ -1,0 +1,6 @@
+{
+  "name": "AR Market BD - Multi-Vendor Marketplace",
+  "description": "Discover retail, wholesale, and import products from trusted global sellers on AR Market BD.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

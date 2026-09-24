@@ -1,0 +1,58 @@
+[
+  {
+    "seller_id": "usr_demo_seller",
+    "seller_name": "Artisan Haven Studio",
+    "title": "Artisan Bamboo Matcha Whisk",
+    "description": "Hand-carved single piece golden bamboo whisk for ceremonies.",
+    "price": 28.5,
+    "category": "Coffee & Tea",
+    "stock": 50,
+    "status": "active",
+    "image_url": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80",
+    "id": "prod_1790260786302_do5zg",
+    "created_at": "2026-09-24T14:39:46.302Z",
+    "updated_at": "2026-09-24T14:39:46.302Z"
+  },
+  {
+    "id": "prod_101",
+    "seller_id": "usr_demo_seller",
+    "seller_name": "Artisan Haven Studio",
+    "title": "Handcrafted Ceramic Teapot Set",
+    "description": "Matte teal ceramic teapot with 4 companion cups and bamboo serving tray.",
+    "price": 89.99,
+    "category": "Home & Kitchen",
+    "stock": 24,
+    "status": "active",
+    "image_url": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600&auto=format&fit=crop&q=80",
+    "created_at": "2026-09-19T14:39:35.895Z",
+    "updated_at": "2026-09-19T14:39:35.895Z"
+  },
+  {
+    "id": "prod_102",
+    "seller_id": "usr_demo_seller",
+    "seller_name": "Artisan Haven Studio",
+    "title": "Handmade Stoneware Pour-Over Dripper",
+    "description": "Custom ribbed interior designed for balanced coffee extraction with walnut base ring.",
+    "price": 45,
+    "category": "Coffee & Tea",
+    "stock": 15,
+    "status": "active",
+    "image_url": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80",
+    "created_at": "2026-09-20T14:39:35.895Z",
+    "updated_at": "2026-09-20T14:39:35.895Z"
+  },
+  {
+    "id": "prod_103",
+    "seller_id": "usr_demo_seller",
+    "seller_name": "Artisan Haven Studio",
+    "title": "Glazed Terracotta Planter with Saucer",
+    "description": "Breathable natural clay planter with drainage hole and matching glazed saucer.",
+    "price": 34.5,
+    "category": "Garden & Living",
+    "stock": 40,
+    "status": "active",
+    "image_url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=600&auto=format&fit=crop&q=80",
+    "created_at": "2026-09-21T14:39:35.895Z",
+    "updated_at": "2026-09-21T14:39:35.895Z"
+  }
+]
