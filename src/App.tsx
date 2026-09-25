@@ -33,7 +33,7 @@ import { useAuth } from './context/AuthContext';
 // Data & Types
 import { PRODUCTS, SELLERS } from './data/mockData';
 import { Product, CartItem, Seller, GroupPost } from './types/marketplace';
-import { CheckCircle2, X, Mail } from 'lucide-react';
+import { CheckCircle2, X, Mail, Home, ShoppingBag, Heart, ShoppingCart, User } from 'lucide-react';
 
 export default function App() {
   // Routing Helper to parse initial path
@@ -281,7 +281,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFA] flex flex-col font-sans text-slate-800 antialiased selection:bg-[#008080] selection:text-white">
+    <div className={`min-h-screen bg-[#F8FAFA] flex flex-col font-sans text-slate-800 antialiased selection:bg-[#008080] selection:text-white max-w-[100vw] overflow-x-hidden ${
+      activePage !== 'customer-dashboard' && !activePage.includes('seller-') && activePage !== 'seller-dashboard'
+        ? 'pb-16 md:pb-0'
+        : ''
+    }`}>
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 animate-in slide-in-from-bottom duration-200">
@@ -601,22 +605,6 @@ export default function App() {
 
       <DevMailboxModal onSelectAction={handleMailboxAction} />
 
-      {/* Floating Dev Mailbox Pill */}
-      <button
-        type="button"
-        onClick={() => setIsMailboxOpen(true)}
-        className="fixed bottom-6 left-6 z-40 hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-900/90 hover:bg-slate-900 text-white rounded-full shadow-xl border border-slate-700/80 backdrop-blur-xs text-xs font-semibold transition-all hover:scale-105 cursor-pointer"
-        title="Preview verification & password reset emails"
-      >
-        <Mail className="w-4 h-4 text-teal-400" />
-        <span>Dev Mailbox</span>
-        {devEmails.length > 0 && (
-          <span className="w-5 h-5 bg-teal-500 text-slate-950 font-bold rounded-full text-[10px] flex items-center justify-center">
-            {devEmails.length}
-          </span>
-        )}
-      </button>
-
       <TaxonomyModal
         type={taxonomyModalType}
         onClose={() => setTaxonomyModalType(null)}
@@ -629,6 +617,92 @@ export default function App() {
           handleNavigatePage('shop', '/shop');
         }}
       />
+
+      {/* Mobile Bottom Navigation Bar for Marketplace */}
+      {activePage !== 'customer-dashboard' &&
+        !activePage.includes('seller-') &&
+        activePage !== 'seller-dashboard' && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+          <button
+            type="button"
+            onClick={() => handleNavigatePage('home', '/')}
+            className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors cursor-pointer ${
+              activePage === 'home' ? 'text-[#008080]' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-[10px] font-semibold mt-0.5">Home</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNavigatePage('shop', '/shop')}
+            className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors cursor-pointer ${
+              activePage === 'shop' ? 'text-[#008080]' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <ShoppingBag className="w-5 h-5" />
+            <span className="text-[10px] font-semibold mt-0.5">Shop</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsWishlistOpen(true)}
+            className="relative flex flex-col items-center justify-center p-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+          >
+            <Heart className="w-5 h-5" />
+            {wishlistIds.length > 0 && (
+              <span className="absolute top-0.5 right-2 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {wishlistIds.length}
+              </span>
+            )}
+            <span className="text-[10px] font-semibold mt-0.5">Wishlist</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="relative flex flex-col items-center justify-center p-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {cart.length > 0 && (
+              <span className="absolute top-0.5 right-2 w-4 h-4 bg-[#008080] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            )}
+            <span className="text-[10px] font-semibold mt-0.5">Cart</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (user) {
+                if (user.role === 'admin') {
+                  handleNavigatePage('admin', '/admin');
+                } else if (user.role === 'seller') {
+                  const catKey = (user.business_type || 'Retailer').toLowerCase();
+                  handleNavigatePage(`seller-${catKey}-dashboard`, `/seller/${catKey}/dashboard`);
+                } else {
+                  handleNavigatePage('customer-dashboard', '/customer-dashboard');
+                }
+              } else {
+                setAuthModalMode('signin');
+                setIsAuthOpen(true);
+              }
+            }}
+            className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors cursor-pointer ${
+              activePage === 'customer-dashboard' || activePage.includes('seller-')
+                ? 'text-[#008080]'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <User className="w-5 h-5" />
+            <span className="text-[10px] font-semibold mt-0.5">
+              {user ? 'Account' : 'Login'}
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

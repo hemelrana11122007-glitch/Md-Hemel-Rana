@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu,
   Shield,
@@ -6,33 +6,153 @@ import {
   LogOut,
   ExternalLink,
   ChevronDown,
-  Mail,
-  Lock,
-  User as UserIcon,
-  Sparkles,
+  Bell,
+  CheckCheck,
+  ShoppingBag,
+  BadgeCheck,
+  AlertTriangle,
+  CreditCard,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminViewKey } from './AdminSidebar';
+import { adminApi } from '../../services/adminApi';
+
+interface AdminNotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  unread: boolean;
+  category: 'order' | 'verification' | 'alert' | 'payment';
+  targetView?: AdminViewKey;
+}
+
+const initialNotifications: AdminNotificationItem[] = [
+  {
+    id: '1',
+    title: 'New Merchant KYC Submitted',
+    description: 'Rahman Trading submitted trade license & NID documents for approval.',
+    time: '5m ago',
+    unread: true,
+    category: 'verification',
+    targetView: 'seller-verification',
+  },
+  {
+    id: '2',
+    title: 'Wholesale Order #ORD-9842',
+    description: 'Advance payment of ৳ 25,000 received in Escrow for bulk electronics.',
+    time: '18m ago',
+    unread: true,
+    category: 'order',
+    targetView: 'order-management',
+  },
+  {
+    id: '3',
+    title: 'Low Stock Alert (14 Items)',
+    description: 'Wholesale & retail products have dropped below safety thresholds (< 5 units).',
+    time: '1h ago',
+    unread: true,
+    category: 'alert',
+    targetView: 'manage-product',
+  },
+  {
+    id: '4',
+    title: 'Escrow Advance Cleared',
+    description: 'Customer advance deposit confirmed for Order #ORD-9830 dispatch.',
+    time: '2h ago',
+    unread: true,
+    category: 'payment',
+    targetView: 'advance-payment',
+  },
+  {
+    id: '5',
+    title: 'System Security Backup',
+    description: 'Automated PostgreSQL database snapshot & access audit completed.',
+    time: '5h ago',
+    unread: false,
+    category: 'alert',
+    targetView: 'activity-logs',
+  },
+];
 
 interface AdminHeaderProps {
   activeView: AdminViewKey;
   onOpenMobileSidebar: () => void;
   onOpenProfileSecurity: () => void;
-  onOpenMailbox: () => void;
+  onOpenMailbox?: () => void;
   onExitDashboard: () => void;
   onNavigateHome: () => void;
+  onNavigateView?: (view: AdminViewKey) => void;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
   activeView,
   onOpenMobileSidebar,
   onOpenProfileSecurity,
-  onOpenMailbox,
   onExitDashboard,
   onNavigateHome,
+  onNavigateView,
 }) => {
-  const { user, devEmails } = useAuth();
+  const { user } = useAuth();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AdminNotificationItem[]>(initialNotifications);
+
+  const loadLiveNotifications = async () => {
+    try {
+      const res = await adminApi.getNotifications();
+      if (res.success && res.notifications) {
+        const formatted: AdminNotificationItem[] = res.notifications.map((n: any) => ({
+          id: n.id,
+          title: n.title || 'New Notification',
+          description: n.description || n.message || '',
+          time: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+          unread: n.unread !== undefined ? n.unread : !n.read,
+          category: n.category || 'verification',
+          targetView: n.targetView || 'seller-verification',
+        }));
+
+        setNotifications((prev) => {
+          const combined = [...formatted];
+          for (const item of prev) {
+            if (!combined.some((c) => c.id === item.id)) {
+              combined.push(item);
+            }
+          }
+          return combined;
+        });
+      }
+    } catch {
+      // Fallback
+    }
+  };
+
+  useEffect(() => {
+    loadLiveNotifications();
+    const interval = setInterval(loadLiveNotifications, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+
+  const handleMarkAllAsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    await adminApi.markNotificationsRead();
+  };
+
+  const handleNotificationClick = async (item: AdminNotificationItem) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === item.id ? { ...n, unread: false } : n))
+    );
+    setNotificationOpen(false);
+    await adminApi.markNotificationsRead(item.id);
+    if (item.targetView && onNavigateView) {
+      onNavigateView(item.targetView);
+    } else if (onNavigateView) {
+      onNavigateView('seller-verification');
+    }
+  };
 
   // Helper to format breadcrumb from active view key
   const formatBreadcrumb = (key: AdminViewKey): { category: string; page: string } => {
@@ -157,41 +277,143 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Security Status, Edit Profile / Security Button, & Admin Menu */}
+      {/* Right: Notification Bell & Admin Profile Dropdown */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Security Badge */}
-        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 bg-teal-50 border border-teal-200/60 rounded-full text-[11px] text-[#008080] font-medium">
-          <Lock className="w-3 h-3 text-[#008080]" />
-          <span>HTTP-Only Cookies & Argon2 Active</span>
-        </div>
+        {/* Notification Bell Button & Dropdown Panel */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setNotificationOpen(!notificationOpen);
+              setProfileDropdownOpen(false);
+            }}
+            className="relative p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200/80 hover:border-slate-300 shadow-2xs"
+            title="System & Marketplace Notifications"
+            aria-label="View notifications"
+          >
+            <Bell className="w-4 h-4 text-slate-700" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-white font-black text-[9px] shadow-xs">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+                <span className="relative z-10">{unreadCount}</span>
+              </span>
+            )}
+          </button>
 
-        {/* Dev Mailbox Button */}
-        <button
-          type="button"
-          onClick={onOpenMailbox}
-          className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
-          title="Inspect simulated authentication emails"
-        >
-          <Mail className="w-3.5 h-3.5 text-teal-600" />
-          <span>Dev Mailbox</span>
-          {devEmails.length > 0 && (
-            <span className="px-1.5 py-0.2 bg-teal-600 text-white rounded-full text-[10px] font-bold">
-              {devEmails.length}
-            </span>
+          {/* Notification Popover Panel */}
+          {notificationOpen && (
+            <>
+              <div
+                onClick={() => setNotificationOpen(false)}
+                className="fixed inset-0 z-40"
+              />
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+                {/* Panel Header */}
+                <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider font-display">
+                      Notifications
+                    </h3>
+                    {unreadCount > 0 ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 text-rose-600 border border-rose-200">
+                        {unreadCount} Unread
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                        All Read
+                      </span>
+                    )}
+                  </div>
+
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllAsRead}
+                      className="text-[11px] font-bold text-[#008080] hover:text-[#006666] flex items-center gap-1 hover:underline cursor-pointer"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
+                      <span>Mark all as read</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Notification Items List */}
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-slate-200">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400">
+                      No notifications at this time
+                    </div>
+                  ) : (
+                    notifications.map((item) => {
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleNotificationClick(item)}
+                          className={`p-3 sm:p-3.5 transition-colors cursor-pointer flex items-start gap-3 hover:bg-slate-50 ${
+                            item.unread ? 'bg-[#008080]/5' : 'bg-white'
+                          }`}
+                        >
+                          {/* Category Icon */}
+                          <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center mt-0.5 ${
+                            item.category === 'verification'
+                              ? 'bg-amber-50 text-amber-600 border border-amber-200/60'
+                              : item.category === 'order'
+                              ? 'bg-blue-50 text-blue-600 border border-blue-200/60'
+                              : item.category === 'payment'
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60'
+                              : 'bg-rose-50 text-rose-600 border border-rose-200/60'
+                          }`}>
+                            {item.category === 'verification' && <BadgeCheck className="w-4 h-4" />}
+                            {item.category === 'order' && <ShoppingBag className="w-4 h-4" />}
+                            {item.category === 'payment' && <CreditCard className="w-4 h-4" />}
+                            {item.category === 'alert' && <AlertTriangle className="w-4 h-4" />}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <h4 className={`text-xs font-bold truncate ${item.unread ? 'text-slate-900' : 'text-slate-700'}`}>
+                                {item.title}
+                              </h4>
+                              <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                                {item.time}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                              {item.description}
+                            </p>
+                          </div>
+
+                          {/* Unread Dot Indicator */}
+                          {item.unread && (
+                            <span className="w-2 h-2 rounded-full bg-[#008080] shrink-0 mt-2" />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Panel Footer: View All Notifications */}
+                <div className="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotificationOpen(false);
+                      if (onNavigateView) {
+                        onNavigateView('activity-logs');
+                      }
+                    }}
+                    className="text-xs font-bold text-[#008080] hover:text-[#006666] flex items-center gap-1.5 transition-colors cursor-pointer py-1 px-3 rounded-lg hover:bg-white"
+                  >
+                    <span>View All Notifications</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </>
           )}
-        </button>
-
-        {/* Requirement 2: Prominent "Edit Profile / Security Settings" button */}
-        <button
-          type="button"
-          onClick={onOpenProfileSecurity}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#008080] hover:bg-[#006666] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
-          title="Update email, password, and admin identity"
-        >
-          <Shield className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Edit Profile / Security</span>
-          <span className="sm:hidden">Settings</span>
-        </button>
+        </div>
 
         {/* Admin Account Dropdown */}
         <div className="relative">

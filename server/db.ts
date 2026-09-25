@@ -13,6 +13,14 @@ export interface KycData {
   updated_at?: string;
 }
 
+export interface NotificationItem {
+  id: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  read: boolean;
+  created_at: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -28,15 +36,19 @@ export interface User {
   two_factor_secret: string | null;
   two_factor_temp_secret?: string | null;
   two_factor_enabled: boolean;
-  seller_status?: 'unverified' | 'pending' | 'approved' | 'suspended' | 'rejected';
+  seller_status?: 'unverified' | 'pending' | 'approved' | 'suspended' | 'rejected' | 'need_docs';
   business_type?: 'Retailer' | 'Wholesaler' | 'Importer' | string;
+  shop_id?: string;
+  customer_id?: string;
   kyc_data?: KycData;
   store_name?: string;
   store_description?: string;
   phone?: string;
   avatar?: string;
+  cover_photo?: string;
   address?: string;
   bio?: string;
+  notifications?: NotificationItem[];
   created_at: string;
   updated_at: string;
 }
@@ -48,10 +60,27 @@ export interface Product {
   title: string;
   description: string;
   price: number;
+  old_price?: number;
   category: string;
   stock: number;
   status: 'active' | 'draft' | 'archived';
   image_url?: string;
+  video_url?: string;
+  vendor_type?: 'Retailer' | 'Wholesaler' | 'Importer';
+  sku?: string;
+  brand?: string;
+  badge?: string;
+  is_featured?: boolean;
+  special_offer_id?: string;
+  weight_kg?: number;
+  moq?: number;
+  country_source?: string;
+  import_cost_bdt?: number;
+  supplier_location?: string;
+  meta_title?: string;
+  meta_keywords?: string;
+  meta_description?: string;
+  courier_status?: 'locked' | 'ready_for_delivery' | 'shipped';
   created_at: string;
   updated_at: string;
 }
@@ -62,12 +91,14 @@ export interface OrderItem {
   quantity: number;
   price: number;
   seller_id: string;
+  shop_id?: string;
 }
 
 export interface Order {
   id: string;
   buyer_id: string;
   buyer_name: string;
+  buyer_customer_id?: string;
   items: OrderItem[];
   total_amount: number;
   status: 'pending' | 'processing' | 'completed' | 'cancelled';
@@ -84,6 +115,59 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 let users: User[] = [];
 let products: Product[] = [];
 let orders: Order[] = [];
+
+/**
+ * Generate a sequential auto-increment Customer ID:
+ * Format: CUST-10001, CUST-10002, CUST-10003, CUST-10004 ...
+ */
+export function generateCustomerId(): string {
+  let highestNum = 10000;
+  for (const u of users) {
+    if (u.customer_id && u.customer_id.startsWith('CUST-')) {
+      const parts = u.customer_id.split('-');
+      if (parts.length === 2) {
+        const num = parseInt(parts[1], 10);
+        if (!isNaN(num) && num > highestNum) {
+          highestNum = num;
+        }
+      }
+    }
+  }
+  const nextNum = highestNum + 1;
+  return `CUST-${nextNum}`;
+}
+
+/**
+ * Generate a unique Sequential Role-Based Shop ID:
+ * - Retailer: RTL-10001, RTL-10002...
+ * - Wholesaler: WHS-10001, WHS-10002...
+ * - Importer: IMP-10001, IMP-10002...
+ */
+export function generateShopId(businessType?: string): string {
+  let prefix = 'RTL';
+  const type = (businessType || '').toLowerCase();
+  if (type.includes('wholesal')) {
+    prefix = 'WHS';
+  } else if (type.includes('import')) {
+    prefix = 'IMP';
+  } else {
+    prefix = 'RTL';
+  }
+
+  let highestNum = 10000;
+  for (const u of users) {
+    if (u.shop_id && u.shop_id.startsWith(`${prefix}-`)) {
+      const parts = u.shop_id.split('-');
+      if (parts.length === 2) {
+        const num = parseInt(parts[1], 10);
+        if (!isNaN(num) && num > highestNum) {
+          highestNum = num;
+        }
+      }
+    }
+  }
+  return `${prefix}-${highestNum + 1}`;
+}
 
 function saveUsersToDisk() {
   try {
@@ -136,11 +220,13 @@ function ensureStorage() {
     const now = new Date().toISOString();
 
     // Ensure demo buyer exists
-    if (!users.some((u) => u.email === 'alex@armarketbd.com')) {
+    const existingDemoBuyer = users.find((u) => u.email === 'alex@armarketbd.com');
+    if (!existingDemoBuyer) {
       users.push({
         id: 'usr_demo_buyer',
         name: 'Alex Merchant',
         email: 'alex@armarketbd.com',
+        customer_id: 'CUST-10001',
         password_hash: defaultPasswordHash,
         role: 'buyer',
         is_verified: true,
@@ -158,6 +244,8 @@ function ensureStorage() {
         created_at: now,
         updated_at: now,
       });
+    } else {
+      if (!existingDemoBuyer.customer_id) existingDemoBuyer.customer_id = 'CUST-10001';
     }
 
     // Ensure armarket super admin exists (Requirement: admin@armarket.com / Admin@2026#Secure)
@@ -219,7 +307,8 @@ function ensureStorage() {
     }
 
     // Ensure demo seller exists
-    if (!users.some((u) => u.email === 'seller@armarketbd.com')) {
+    const existingDemoSeller = users.find((u) => u.email === 'seller@armarketbd.com');
+    if (!existingDemoSeller) {
       users.push({
         id: 'usr_demo_seller',
         name: 'Elena Rostova',
@@ -227,6 +316,8 @@ function ensureStorage() {
         password_hash: defaultPasswordHash,
         role: 'seller',
         seller_status: 'approved',
+        business_type: 'Retailer',
+        shop_id: 'RTL-10024',
         store_name: 'Artisan Haven Studio',
         store_description: 'Handcrafted luxury ceramic and wooden homeware sustainably sourced.',
         phone: '+1 (555) 789-0123',
@@ -244,10 +335,14 @@ function ensureStorage() {
         created_at: now,
         updated_at: now,
       });
+    } else {
+      if (!existingDemoSeller.business_type) existingDemoSeller.business_type = 'Retailer';
+      if (!existingDemoSeller.shop_id) existingDemoSeller.shop_id = 'RTL-10024';
     }
 
     // Ensure pending seller exists for realistic super admin verification tests
-    if (!users.some((u) => u.email === 'craftsman@greenworks.io')) {
+    const existingPendingSeller = users.find((u) => u.email === 'craftsman@greenworks.io');
+    if (!existingPendingSeller) {
       users.push({
         id: 'usr_pending_seller_1',
         name: 'Marcus Vance',
@@ -255,6 +350,8 @@ function ensureStorage() {
         password_hash: defaultPasswordHash,
         role: 'seller',
         seller_status: 'pending',
+        business_type: 'Wholesaler',
+        shop_id: 'WHS-10085',
         store_name: 'GreenWorks Woodcraft',
         store_description: 'Reclaimed teak and bamboo minimalist kitchen accessories.',
         phone: '+1 (555) 456-7890',
@@ -272,6 +369,37 @@ function ensureStorage() {
         created_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
         updated_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
       });
+    } else {
+      if (!existingPendingSeller.business_type) existingPendingSeller.business_type = 'Wholesaler';
+      if (!existingPendingSeller.shop_id) existingPendingSeller.shop_id = 'WHS-10085';
+    }
+
+    // Ensure all sellers have a unique Shop ID assigned
+    for (const u of users) {
+      if (u.role === 'seller' && !u.shop_id) {
+        u.shop_id = generateShopId(u.business_type || 'Retailer');
+      }
+    }
+
+    // Ensure all customers/buyers have a sequential Customer ID assigned (CUST-10001, CUST-10002, ...)
+    let highestCustSeq = 10000;
+    for (const u of users) {
+      if (u.role === 'buyer' && u.customer_id && u.customer_id.startsWith('CUST-')) {
+        const parts = u.customer_id.split('-');
+        if (parts.length === 2) {
+          const num = parseInt(parts[1], 10);
+          if (!isNaN(num) && num > highestCustSeq) {
+            highestCustSeq = num;
+          }
+        }
+      }
+    }
+
+    for (const u of users) {
+      if (u.role === 'buyer' && !u.customer_id) {
+        highestCustSeq++;
+        u.customer_id = `CUST-${highestCustSeq}`;
+      }
     }
 
     // Save updated users
@@ -404,10 +532,25 @@ export const db = {
   createUser(userData: Omit<User, 'id' | 'created_at' | 'updated_at'>): User {
     const id = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const now = new Date().toISOString();
+    
+    // Auto-generate unique Shop ID for seller accounts
+    let shop_id = userData.shop_id;
+    if (userData.role === 'seller' && !shop_id) {
+      shop_id = generateShopId(userData.business_type || 'Retailer');
+    }
+
+    // Auto-generate sequential Customer ID for buyer accounts (CUST-10001, CUST-10002, ...)
+    let customer_id = userData.customer_id;
+    if (userData.role === 'buyer' && !customer_id) {
+      customer_id = generateCustomerId();
+    }
+
     const newUser: User = {
       ...userData,
       email: userData.email.trim().toLowerCase(),
       id,
+      shop_id,
+      customer_id,
       seller_status: userData.role === 'seller' ? (userData.seller_status || 'pending') : undefined,
       created_at: now,
       updated_at: now,
@@ -421,9 +564,22 @@ export const db = {
     const index = users.findIndex((u) => u.id === id);
     if (index === -1) return undefined;
 
+    const existing = users[index];
+    let shop_id = updates.shop_id !== undefined ? updates.shop_id : existing.shop_id;
+    if ((updates.role === 'seller' || existing.role === 'seller') && !shop_id) {
+      shop_id = generateShopId(updates.business_type || existing.business_type || 'Retailer');
+    }
+
+    let customer_id = updates.customer_id !== undefined ? updates.customer_id : existing.customer_id;
+    if ((updates.role === 'buyer' || existing.role === 'buyer') && !customer_id) {
+      customer_id = generateCustomerId();
+    }
+
     users[index] = {
-      ...users[index],
+      ...existing,
       ...updates,
+      shop_id,
+      customer_id,
       updated_at: new Date().toISOString(),
     };
     saveUsersToDisk();
@@ -432,6 +588,30 @@ export const db = {
 
   getAllUsers(): User[] {
     return [...users];
+  },
+
+  // Customer specific queries
+  getAllCustomers(): Array<
+    Omit<User, 'password_hash' | 'two_factor_secret' | 'two_factor_temp_secret' | 'reset_token_hash'> & {
+      orderCount: number;
+      totalSpent: number;
+    }
+  > {
+    const buyers = users.filter((u) => u.role === 'buyer');
+    return buyers.map((buyer) => {
+      const buyerOrders = orders.filter((o) => o.buyer_id === buyer.id);
+      const totalSpent = buyerOrders
+        .filter((o) => o.status === 'completed')
+        .reduce((sum, o) => sum + o.total_amount, 0);
+
+      const { password_hash, two_factor_secret, two_factor_temp_secret, reset_token_hash, ...safeBuyer } = buyer;
+      return {
+        ...safeBuyer,
+        customer_id: buyer.customer_id || 'CUST-10001',
+        orderCount: buyerOrders.length,
+        totalSpent: Number(totalSpent.toFixed(2)),
+      };
+    });
   },
 
   // Seller specific queries
@@ -467,7 +647,7 @@ export const db = {
     });
   },
 
-  updateSellerStatus(id: string, status: 'approved' | 'suspended' | 'rejected' | 'pending' | 'unverified'): User | undefined {
+  updateSellerStatus(id: string, status: 'approved' | 'suspended' | 'rejected' | 'pending' | 'unverified' | 'need_docs'): User | undefined {
     const seller = users.find((u) => u.id === id && u.role === 'seller');
     if (!seller) return undefined;
 
@@ -475,6 +655,56 @@ export const db = {
     seller.updated_at = new Date().toISOString();
     saveUsersToDisk();
     return seller;
+  },
+
+  transferSellerRole(id: string, newBusinessType: 'Retailer' | 'Wholesaler' | 'Importer' | string): User | undefined {
+    const seller = users.find((u) => u.id === id && u.role === 'seller');
+    if (!seller) return undefined;
+
+    seller.business_type = newBusinessType;
+    seller.shop_id = generateShopId(newBusinessType);
+    seller.updated_at = new Date().toISOString();
+    saveUsersToDisk();
+    return seller;
+  },
+
+  addUserNotification(userId: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+    if (!user.notifications) user.notifications = [];
+    user.notifications.unshift({
+      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      message,
+      type,
+      read: false,
+      created_at: new Date().toISOString(),
+    });
+    saveUsersToDisk();
+  },
+
+  notifyAdmins(
+    title: string,
+    message: string,
+    category: 'verification' | 'order' | 'alert' | 'payment' = 'verification',
+    targetView: string = 'seller-verification'
+  ) {
+    const adminUsers = users.filter((u) => u.role === 'admin');
+    const now = new Date().toISOString();
+    adminUsers.forEach((admin) => {
+      if (!admin.notifications) admin.notifications = [];
+      admin.notifications.unshift({
+        id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        title,
+        description: message,
+        message,
+        time: 'Just now',
+        unread: true,
+        category,
+        targetView,
+        created_at: now,
+      } as any);
+    });
+    saveUsersToDisk();
   },
 
   updateUserKyc(id: string, kycData: KycData): User | undefined {
@@ -525,6 +755,10 @@ export const db = {
   },
 
   // Seller products & stats
+  getAllProducts(): Product[] {
+    return [...products];
+  },
+
   getProductsBySellerId(sellerId: string): Product[] {
     return products.filter((p) => p.seller_id === sellerId);
   },
@@ -557,6 +791,14 @@ export const db = {
 
   deleteProduct(id: string, sellerId: string): boolean {
     const index = products.findIndex((p) => p.id === id && p.seller_id === sellerId);
+    if (index === -1) return false;
+    products.splice(index, 1);
+    saveProductsToDisk();
+    return true;
+  },
+
+  deleteProductAdmin(id: string): boolean {
+    const index = products.findIndex((p) => p.id === id);
     if (index === -1) return false;
     products.splice(index, 1);
     saveProductsToDisk();
@@ -613,12 +855,20 @@ export const db = {
       pendingOrders: pendingOrdersCount,
       sellerStatus: sellerUser?.seller_status || 'pending',
       storeName: sellerUser?.store_name || sellerUser?.name,
+      shopId: sellerUser?.shop_id,
+      businessType: sellerUser?.business_type,
       recentOrders: recentOrders.slice(0, 5),
     };
   },
 
   getAllOrders(): Order[] {
-    return [...orders];
+    return orders.map((o) => {
+      const buyer = users.find((u) => u.id === o.buyer_id);
+      return {
+        ...o,
+        buyer_customer_id: o.buyer_customer_id || buyer?.customer_id || 'CUST-10001',
+      };
+    });
   },
 
   updateOrderStatus(orderId: string, status: Order['status']): Order | undefined {

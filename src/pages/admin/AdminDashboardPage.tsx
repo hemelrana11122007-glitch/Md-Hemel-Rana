@@ -7,10 +7,12 @@ import { DashboardOverviewView } from '../../components/admin/views/DashboardOve
 import { WebsiteSeoView } from '../../components/admin/views/WebsiteSeoView';
 import { SellerVerificationView } from '../../components/admin/views/SellerVerificationView';
 import { ManageSellersView } from '../../components/admin/views/ManageSellersView';
+import { ManageCustomersView } from '../../components/admin/views/ManageCustomersView';
 import { OrderManagementView } from '../../components/admin/views/OrderManagementView';
 import { ActivityLogsView } from '../../components/admin/views/ActivityLogsView';
 import { PaymentTaxView } from '../../components/admin/views/PaymentTaxView';
 import { AnalyticsReportsView } from '../../components/admin/views/AnalyticsReportsView';
+import { ManageProductsView } from '../../components/admin/views/ManageProductsView';
 import { GeneralModuleView } from '../../components/admin/views/GeneralModuleView';
 import { useAuth } from '../../context/AuthContext';
 
@@ -48,7 +50,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       onNavigateHome={onNavigateHome}
       onOpenAuth={onOpenAuth}
     >
-      <div className="min-h-screen bg-[#F8FAFA] flex antialiased font-sans text-slate-800">
+      <div className="h-screen overflow-hidden bg-[#F8FAFA] flex antialiased font-sans text-slate-800">
         {/* Sidebar Navigation */}
         <AdminSidebar
           activeView={activeView}
@@ -59,15 +61,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
           {/* Header */}
           <AdminHeader
             activeView={activeView}
             onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
             onOpenProfileSecurity={() => setIsProfileSecurityOpen(true)}
-            onOpenMailbox={() => setIsMailboxOpen(true)}
             onExitDashboard={handleExitDashboard}
             onNavigateHome={onNavigateHome}
+            onNavigateView={(view) => setActiveView(view)}
           />
 
           {/* Dynamic View Body */}
@@ -97,6 +99,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <ManageSellersView onShowToast={onShowToast} />
               )}
 
+              {activeView === 'manage-customers' && (
+                <ManageCustomersView onShowToast={onShowToast} />
+              )}
+
               {activeView === 'order-management' && (
                 <OrderManagementView onShowToast={onShowToast} />
               )}
@@ -117,6 +123,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <PaymentTaxView onShowToast={onShowToast} />
               )}
 
+              {activeView === 'manage-product' && (
+                <ManageProductsView onShowToast={onShowToast} />
+              )}
+
               {/* All other modules handled smoothly with specialized controls */}
               {![
                 'overview',
@@ -124,7 +134,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 'activity-logs',
                 'seller-verification',
                 'manage-sellers',
+                'manage-customers',
                 'order-management',
+                'manage-product',
                 'website-seo',
                 'seo-general-identity',
                 'seo-xml-sitemap',

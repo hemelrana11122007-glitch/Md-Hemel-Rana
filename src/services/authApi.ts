@@ -14,6 +14,8 @@ export interface AuthUser {
   two_factor_enabled: boolean;
   seller_status?: string;
   business_type?: string;
+  shop_id?: string;
+  customer_id?: string;
   kyc_data?: {
     nid_front_url?: string;
     nid_back_url?: string;
@@ -24,8 +26,10 @@ export interface AuthUser {
     submitted_at?: string;
   };
   store_name?: string;
+  store_description?: string;
   phone?: string;
   avatar?: string;
+  cover_photo?: string;
   address?: string;
   bio?: string;
   created_at: string;
@@ -175,12 +179,13 @@ export const authApi = {
     user?: AuthUser;
   }> {
     const normEmail = (credentials.email || '').toLowerCase().trim();
-    const isAdmin = normEmail === 'admin@armarket.com' && credentials.password === 'Admin@2026#Secure';
+    const cleanPassword = (credentials.password || '').trim();
+    const isAdmin = normEmail === 'admin@armarket.com' && cleanPassword === 'Admin@2026#Secure';
 
     try {
       const res = await secureFetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({ email: normEmail, password: cleanPassword }),
       });
       const json = await res.json();
       if (!res.ok) {

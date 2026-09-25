@@ -60,6 +60,7 @@ export const ManageSellersView: React.FC<ManageSellersViewProps> = ({ onShowToas
       !searchQuery.trim() ||
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.shop_id && s.shop_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (s.store_name && s.store_name.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchStatus && matchQuery;
   });
@@ -147,7 +148,19 @@ export const ManageSellersView: React.FC<ManageSellersViewProps> = ({ onShowToas
                         )}
                       </div>
                       <div>
-                        <div className="font-bold text-slate-900">{seller.store_name || seller.name}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900">{seller.store_name || seller.name}</span>
+                          {seller.shop_id && (
+                            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-slate-900 text-teal-300 border border-teal-500/30">
+                              {seller.shop_id}
+                            </span>
+                          )}
+                          {seller.business_type && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-teal-50 text-[#008080] border border-teal-200">
+                              {seller.business_type}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-500">{seller.name}</div>
                       </div>
                     </div>

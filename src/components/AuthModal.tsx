@@ -246,7 +246,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const hasNumber = /[0-9]/.test(password);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-950/65 backdrop-blur-xs transition-opacity"
@@ -254,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden z-10 p-6 sm:p-7 animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden z-10 p-4 sm:p-7 animate-in zoom-in-95 duration-200 flex flex-col max-h-[94vh]">
         <button
           type="button"
           onClick={onClose}
@@ -307,18 +307,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <span>{successMessage}</span>
-              {onOpenMailbox && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenMailbox();
-                  }}
-                  className="mt-1 block text-xs font-bold text-[#008080] hover:underline cursor-pointer"
-                >
-                  View in Dev Mailbox →
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -730,20 +718,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               <div className="pt-1 flex items-center justify-center gap-3 text-xs">
-                {onOpenMailbox && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenMailbox();
-                    }}
-                    className="font-bold text-[#008080] hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Dev Mailbox</span>
-                  </button>
-                )}
-                <span className="text-slate-300">·</span>
                 <button
                   type="button"
                   onClick={() => setMode('signin')}

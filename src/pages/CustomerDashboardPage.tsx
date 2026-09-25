@@ -28,6 +28,8 @@ import {
   Image as ImageIcon,
   ChevronRight,
   ArrowLeft,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Product, CartItem } from '../types/marketplace';
@@ -71,6 +73,15 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   const { user, logout, setIsMailboxOpen } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [customerId, setCustomerId] = useState<string>(user?.customer_id || 'CUST-10001');
+
+  // Sync with auth user updates
+  React.useEffect(() => {
+    if (user?.customer_id) {
+      setCustomerId(user.customer_id);
+    }
+  }, [user?.customer_id]);
 
   // --- 1. Customer Level Progress State ---
   const [orderCount, setOrderCount] = useState(3);
@@ -356,30 +367,41 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+    <div className="h-screen overflow-hidden bg-[#F8FAFA] font-sans text-slate-800 flex flex-col">
       {/* ================= TOP HEADER BAR ================= */}
-      <header className="w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Left: Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-          <span className="text-[#008080] font-bold">Customer Portal</span>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-800 font-semibold capitalize">
-            {menuItems.find((m) => m.key === activeTab)?.label || 'Dashboard Overview'}
+      <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-2 shrink-0">
+        <header className="w-full bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          {/* Left: Breadcrumb & Mobile Drawer Trigger */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsMobileDrawerOpen(true)}
+              className="p-1.5 -ml-1 rounded-xl text-slate-700 hover:text-[#008080] hover:bg-slate-100 lg:hidden cursor-pointer flex items-center justify-center"
+              title="Open Customer Menu"
+              aria-label="Open Customer Menu"
+            >
+              <Menu className="w-5 h-5 text-slate-800" />
+            </button>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium flex-wrap">
+              <span className="text-[#008080] font-bold">Customer Portal</span>
+              <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-slate-900 text-teal-300 border border-teal-500/30 flex items-center gap-1 shadow-2xs">
+                <User className="w-2.5 h-2.5 text-teal-400" />
+                <span>ID: {customerId}</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-slate-800 font-semibold capitalize truncate max-w-[140px] sm:max-w-none">
+                {menuItems.find((m) => m.key === activeTab)?.label || 'Dashboard Overview'}
+              </span>
+            </div>
+          </div>
+          <span className="sm:hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#008080]/10 text-[#008080] border border-[#008080]/20">
+            {level.split(' ')[0]}
           </span>
         </div>
 
         {/* Right: Actions & User Profile */}
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          {/* Dev Mailbox Button */}
-          <button
-            onClick={() => setIsMailboxOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-            title="Open Dev Mailbox"
-          >
-            <Mail className="w-4 h-4 text-[#008080]" />
-            <span className="hidden md:inline">Dev Mailbox</span>
-          </button>
-
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
           {/* Edit Profile / Security Button */}
           <button
             onClick={() => setActiveTab('settings')}
@@ -401,7 +423,12 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                 className="w-8 h-8 rounded-lg object-cover ring-2 ring-[#008080]/20"
               />
               <div className="text-left hidden sm:block">
-                <p className="text-xs font-bold text-slate-800 leading-tight">{profileName}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-slate-800 leading-tight">{profileName}</p>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-900 text-teal-300 border border-teal-500/30">
+                    {customerId}
+                  </span>
+                </div>
                 <p className="text-[10px] text-slate-500 truncate max-w-[120px]">{profileEmail}</p>
               </div>
               <ChevronRight
@@ -425,9 +452,15 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                   <div className="px-4 py-3 border-b border-slate-100">
                     <p className="text-xs font-bold text-slate-900 leading-tight">{profileName}</p>
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">{profileEmail}</p>
-                    <span className="inline-block mt-1.5 px-2 py-0.5 rounded-md text-[9px] font-bold bg-[#008080]/10 text-[#008080]">
-                      Verified Customer Account
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span className="inline-block px-2 py-0.5 rounded-md text-[9px] font-bold bg-[#008080]/10 text-[#008080]">
+                        Verified Customer
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-slate-900 text-teal-300 shadow-2xs">
+                        <User className="w-2.5 h-2.5 text-teal-400" />
+                        <span>ID: {customerId}</span>
+                      </span>
+                    </div>
                   </div>
 
                   <div className="py-1">
@@ -475,43 +508,199 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
           </div>
         </div>
       </header>
+      </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      {/* Mobile Customer Tab Quick Bar */}
+      <div className="lg:hidden mx-3 mb-2 bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between gap-2 shadow-xs shrink-0">
+        <button
+          type="button"
+          onClick={() => setIsMobileDrawerOpen(true)}
+          className="flex items-center gap-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl cursor-pointer"
+        >
+          <Menu className="w-4 h-4 text-[#008080]" />
+          <span>Tab: <span className="text-[#008080]">{menuItems.find((m) => m.key === activeTab)?.label}</span></span>
+        </button>
         
-        {/* ================= SIDEBAR LAYOUT (Teal Theme) ================= */}
-        <aside className="w-full lg:w-72 shrink-0 bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col">
+        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#008080]/10 text-[#008080] border border-[#008080]/20">
+          {level.split(' ')[0]}
+        </span>
+      </div>
+
+      {/* Mobile Off-Canvas Drawer */}
+      {isMobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in"
+            onClick={() => setIsMobileDrawerOpen(false)}
+          />
+          {/* Drawer Body */}
+          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col justify-between z-50 animate-in slide-in-from-left duration-200 overflow-y-auto">
+            <div>
+              {/* Drawer Top Branding: 1. Teal Accent Header */}
+              <div className="p-4 bg-[#008080] text-white flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white text-[#008080] flex items-center justify-center font-bold text-sm shadow-xs">
+                    AR
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white text-xs leading-tight font-display">AR Market BD</h3>
+                    <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/20 text-white uppercase">
+                      Customer Portal
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-teal-100 hover:text-white hover:bg-white/10 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Level Progress Panel */}
+              <div className="p-4 bg-gradient-to-b from-[#008080]/15 to-transparent border-b border-slate-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#008080]/10 flex items-center justify-center text-[#008080]">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[9px] text-[#008080] font-bold uppercase tracking-wider">Account Level</div>
+                    <h4 className="text-xs font-bold text-slate-800 leading-tight">{level}</h4>
+                  </div>
+                </div>
+
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mb-1">
+                  <div
+                    className="bg-[#008080] h-1.5 rounded-full transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between text-[9px] text-slate-500">
+                  <span>{orderCount} Orders</span>
+                  <span className="font-bold text-[#008080]">{Math.round(progress)}%</span>
+                </div>
+              </div>
+
+              {/* 13 Menu Items */}
+              <nav className="p-3 space-y-1">
+                <div className="px-2.5 py-1 text-[10px] font-black text-[#008080] uppercase tracking-wider">
+                  Customer Navigation
+                </div>
+                {menuItems.map((item) => {
+                  const IconComp = item.icon;
+                  const isActive = activeTab === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => {
+                        setActiveTab(item.key as TabKey);
+                        setIsMobileDrawerOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+                        isActive
+                          ? 'border-l-4 border-[#008080] bg-[#008080]/10 text-[#008080] font-bold shadow-2xs rounded-r-lg'
+                          : 'border-l-4 border-transparent text-slate-700 hover:text-[#008080] hover:bg-slate-50 rounded-r-lg'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <IconComp
+                          className={`w-4 h-4 ${
+                            isActive ? 'text-[#008080]' : 'text-slate-400 group-hover:text-[#008080]'
+                          }`}
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                      {typeof item.count === 'number' && item.count > 0 && (
+                        <span
+                          className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                            isActive
+                              ? 'bg-[#008080] text-white'
+                              : 'bg-slate-100 text-[#008080]'
+                          }`}
+                        >
+                          {item.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="p-3 border-t border-slate-100 bg-slate-50 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileDrawerOpen(false);
+                  onNavigateHome();
+                }}
+                className="w-full py-2 px-3 text-xs font-bold text-[#008080] bg-[#008080]/10 hover:bg-[#008080]/20 rounded-xl border border-[#008080]/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Visit Storefront</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileDrawerOpen(false);
+                  handleSignOut();
+                }}
+                className="w-full py-2 px-3 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-rose-500" />
+                <span>Logout Portal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Layout Area */}
+      <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 pb-3 sm:pb-4 flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 min-h-0 overflow-hidden">
+        
+        {/* ================= SIDEBAR LAYOUT (Teal Theme) Desktop ================= */}
+        <aside className="hidden lg:flex w-72 shrink-0 bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex-col h-full">
           
-          {/* 0. AR Market BD Branding Top Bar */}
-          <div className="p-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
+          {/* 0. AR Market BD Branding Top Bar: 1. Teal Accent Header */}
+          <div className="p-4 bg-[#008080] text-white flex items-center justify-between shadow-xs shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#008080] flex items-center justify-center text-white font-bold text-base shadow-sm shadow-[#008080]/20">
+              <div className="w-10 h-10 rounded-xl bg-white text-[#008080] flex items-center justify-center font-black text-base shadow-sm">
                 AR
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 text-sm leading-tight">AR Market BD</h3>
-                <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#008080]/10 text-[#008080] border border-[#008080]/20 uppercase tracking-wider">
-                  Customer Portal
-                </span>
+                <h3 className="font-extrabold text-white text-sm leading-tight font-display">AR Market BD</h3>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white uppercase tracking-wider">
+                    Customer Portal
+                  </span>
+                  <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-slate-900 text-teal-300 border border-teal-500/30">
+                    {customerId}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
           
           {/* 1. Customer Level Progress Panel (Teal Accent) */}
-          <div className="p-5 bg-gradient-to-b from-[#008080]/15 to-transparent border-b border-slate-100">
-            <div className="flex items-center gap-2.5 mb-2.5">
-              <div className="w-9 h-9 rounded-xl bg-[#008080]/10 flex items-center justify-center text-[#008080]">
-                <Trophy className="w-5 h-5" />
+          <div className="p-4 bg-gradient-to-b from-[#008080]/15 to-transparent border-b border-slate-100 shrink-0">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-[#008080]/10 flex items-center justify-center text-[#008080]">
+                <Trophy className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Verified Account Level</div>
-                <h4 className="text-sm font-bold text-slate-800 leading-tight">{level}</h4>
+                <div className="text-[10px] text-[#008080] font-bold uppercase tracking-wider">Verified Account Level</div>
+                <h4 className="text-xs font-bold text-slate-800 leading-tight">{level}</h4>
               </div>
             </div>
 
             {/* Level progress bar */}
-            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mb-1.5">
+            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mb-1">
               <div
-                className="bg-[#008080] h-2 rounded-full transition-all duration-500"
+                className="bg-[#008080] h-1.5 rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -522,14 +711,17 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
             </div>
 
             {remaining > 0 && (
-              <p className="text-[10px] bg-amber-50 text-amber-800 p-2 rounded-lg border border-amber-200/50 mt-2.5 text-center font-medium leading-tight">
+              <p className="text-[10px] bg-amber-50 text-amber-800 p-1.5 rounded-lg border border-amber-200/50 mt-2 text-center font-medium leading-tight">
                 🏆 {remaining} more {remaining === 1 ? 'order' : 'orders'} needed for {nextLevel}
               </p>
             )}
           </div>
 
           {/* Sidebar Menu Items */}
-          <nav className="p-3.5 space-y-1 flex-1">
+          <nav className="p-3.5 space-y-1 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+            <div className="px-2.5 py-1 text-[10px] font-black text-[#008080] uppercase tracking-wider">
+              Customer Navigation
+            </div>
             {menuItems.map((item) => {
               const IconComp = item.icon;
               const isActive = activeTab === item.key;
@@ -537,19 +729,19 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                 <button
                   key={item.key}
                   onClick={() => setActiveTab(item.key as TabKey)}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-[#008080] text-white shadow-sm shadow-[#008080]/20'
-                      : 'text-slate-600 hover:text-[#008080] hover:bg-[#008080]/5'
+                      ? 'border-l-4 border-[#008080] bg-[#008080]/10 text-[#008080] font-bold shadow-2xs rounded-r-lg'
+                      : 'border-l-4 border-transparent text-slate-700 hover:text-[#008080] hover:bg-slate-50 rounded-r-lg'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <IconComp className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <IconComp className={`w-4 h-4 ${isActive ? 'text-[#008080]' : 'text-slate-400 group-hover:text-[#008080]'}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.count !== undefined && item.count > 0 && (
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white text-[#008080]' : 'bg-slate-100 text-[#008080]'
+                      isActive ? 'bg-[#008080] text-white' : 'bg-slate-100 text-[#008080]'
                     }`}>
                       {item.count}
                     </span>
@@ -579,14 +771,19 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
         </aside>
 
         {/* ================= MAIN DASHBOARD VIEWS ================= */}
-        <section className="flex-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs min-h-[600px]">
+        <section className="flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs overflow-y-auto h-full scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
           
           {/* 2. DASHBOARD OVERVIEW TAB */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               <div className="p-6 rounded-2xl bg-gradient-to-br from-[#008080] to-[#004D40] text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h2 className="text-xl font-bold font-display">Welcome Back, {profileName}!</h2>
+                  <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                    <h2 className="text-xl font-bold font-display">Welcome Back, {profileName}!</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-extrabold bg-slate-900 text-teal-300 border border-teal-500/40 shadow-2xs">
+                      Customer ID: {customerId}
+                    </span>
+                  </div>
                   <p className="text-xs text-[#008080]/20 mt-1 text-teal-50/80">
                     Monitor your escrow order status, wishlist items, loyalty rewards, and active multi-vendor wholesale coupons.
                   </p>

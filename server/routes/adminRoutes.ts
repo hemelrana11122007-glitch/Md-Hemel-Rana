@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { GoogleGenAI } from '@google/genai';
 import { db } from '../db';
 import { authMiddleware, requireRole } from '../middleware/security';
 
@@ -57,15 +58,36 @@ adminRouter.get('/sellers', (_req: Request, res: Response): void => {
 });
 
 /**
+ * GET /api/admin/customers
+ * Returns list of all registered customers with their sequential Customer ID,
+ * order volume, total expenditure, and contact info
+ */
+adminRouter.get('/customers', (_req: Request, res: Response): void => {
+  try {
+    const customers = db.getAllCustomers();
+    res.json({
+      success: true,
+      count: customers.length,
+      customers,
+    });
+  } catch (error) {
+    console.error('Error fetching customer list:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve registered customers.',
+    });
+  }
+});
+
+/**
  * PATCH /api/admin/sellers/:id/status
- * Approves, Suspends, or Rejects a seller's merchant account
+ * Updates a seller's merchant status and sends corresponding email/bell notification
  */
 adminRouter.patch('/sellers/:id/status', (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = ['approved', 'suspended', 'rejected', 'pending'];
+    const allowedStatuses = ['approved', 'suspended', 'rejected', 'pending', 'need_docs', 'unverified'];
     if (!status || !allowedStatuses.includes(status)) {
       res.status(400).json({
         error: `Invalid status. Allowed values are: ${allowedStatuses.join(', ')}`,
@@ -82,6 +104,31 @@ adminRouter.patch('/sellers/:id/status', (req: Request, res: Response): void => 
     }
 
     const updatedSeller = db.updateSellerStatus(id, status);
+
+    // Send notification according to status update rule
+    let notifMsg = '';
+    let notifType: 'success' | 'warning' | 'error' | 'info' = 'info';
+
+    if (status === 'approved') {
+      notifMsg = 'Congratulations! Your KYC has been verified successfully. Your seller account is now approved and ready to use.';
+      notifType = 'success';
+    } else if (status === 'need_docs') {
+      notifMsg = 'Additional documents are required to complete your KYC verification. Please upload the requested documents from your seller dashboard.';
+      notifType = 'warning';
+    } else if (status === 'rejected') {
+      notifMsg = 'Your KYC verification could not be approved. Please review your documents, make the necessary corrections, and submit your KYC again.';
+      notifType = 'error';
+    } else if (status === 'suspended') {
+      notifMsg = 'Your seller account has been suspended by the AR Market BD authority due to a policy or verification issue. Please contact support.';
+      notifType = 'error';
+    } else if (status === 'pending') {
+      notifMsg = 'Your seller account suspension has been lifted. Your account status is now set to Pending Verification.';
+      notifType = 'info';
+    }
+
+    if (notifMsg) {
+      db.addUserNotification(id, notifMsg, notifType);
+    }
 
     res.json({
       success: true,
@@ -101,6 +148,50 @@ adminRouter.patch('/sellers/:id/status', (req: Request, res: Response): void => 
     res.status(500).json({
       error: 'Failed to update seller status.',
     });
+  }
+});
+
+/**
+ * PATCH /api/admin/sellers/:id/transfer-role
+ * Transfers a seller's business type and updates shop ID sequentially
+ */
+adminRouter.patch('/sellers/:id/transfer-role', (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    const { business_type } = req.body;
+
+    const allowedTypes = ['Retailer', 'Wholesaler', 'Importer'];
+    if (!business_type || !allowedTypes.includes(business_type)) {
+      res.status(400).json({
+        error: `Invalid business type. Allowed values are: ${allowedTypes.join(', ')}`,
+      });
+      return;
+    }
+
+    const seller = db.findUserById(id);
+    if (!seller || seller.role !== 'seller') {
+      res.status(404).json({
+        error: 'Seller not found.',
+      });
+      return;
+    }
+
+    const updatedSeller = db.transferSellerRole(id, business_type);
+    db.addUserNotification(id, `Your merchant role has been transferred to ${business_type}. New Shop ID is ${updatedSeller?.shop_id}.`, 'info');
+
+    res.json({
+      success: true,
+      message: `Seller role transferred to ${business_type} successfully.`,
+      seller: {
+        id: updatedSeller?.id,
+        name: updatedSeller?.name,
+        business_type: updatedSeller?.business_type,
+        shop_id: updatedSeller?.shop_id,
+      },
+    });
+  } catch (error) {
+    console.error('Error transferring seller role:', error);
+    res.status(500).json({ error: 'Failed to transfer seller role.' });
   }
 });
 
@@ -273,4 +364,321 @@ adminRouter.get('/activity-logs', (_req: Request, res: Response): void => {
     success: true,
     logs,
   });
+});
+
+/**
+ * GET /api/admin/notifications
+ * Returns live admin notifications list
+ */
+adminRouter.get('/notifications', (req: Request, res: Response): void => {
+  try {
+    const adminUser = db.findUserById(req.user!.id);
+    const notifications = adminUser?.notifications || [];
+    res.json({
+      success: true,
+      notifications,
+    });
+  } catch (error) {
+    console.error('Error fetching admin notifications:', error);
+    res.status(500).json({ error: 'Failed to retrieve notifications.' });
+  }
+});
+
+/**
+ * PATCH /api/admin/notifications/mark-read
+ * Marks all notifications or a specific notification as read for admin
+ */
+adminRouter.patch('/notifications/mark-read', (req: Request, res: Response): void => {
+  try {
+    const { notificationId } = req.body;
+    const adminUser = db.findUserById(req.user!.id);
+    if (adminUser) {
+      const notifs = adminUser.notifications || [];
+      if (notificationId) {
+        adminUser.notifications = notifs.map((n: any) =>
+          n.id === notificationId ? { ...n, unread: false, read: true } : n
+        );
+      } else {
+        adminUser.notifications = notifs.map((n: any) => ({
+          ...n,
+          unread: false,
+          read: true,
+        }));
+      }
+      db.updateUser(adminUser.id, { notifications: adminUser.notifications });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to mark notifications read.' });
+  }
+});
+
+/**
+ * GET /api/admin/products
+ */
+adminRouter.get('/products', (_req: Request, res: Response): void => {
+  try {
+    const products = db.getAllProducts();
+    res.json({
+      success: true,
+      count: products.length,
+      products,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve products.' });
+  }
+});
+
+/**
+ * POST /api/admin/products
+ */
+adminRouter.post('/products', (req: Request, res: Response): void => {
+  try {
+    const {
+      seller_id,
+      title,
+      description,
+      price,
+      old_price,
+      category,
+      stock,
+      status,
+      image_url,
+      video_url,
+      vendor_type,
+      sku,
+      brand,
+      badge,
+      is_featured,
+      special_offer_id,
+      weight_kg,
+      moq,
+      country_source,
+      import_cost_bdt,
+      supplier_location,
+      meta_title,
+      meta_keywords,
+      meta_description,
+      courier_status,
+    } = req.body;
+
+    if (!title || price === undefined || !category) {
+      res.status(400).json({ error: 'Product Title, Price, and Category are mandatory.' });
+      return;
+    }
+
+    const seller = seller_id ? db.findUserById(seller_id) : null;
+    const seller_name = seller ? (seller.store_name || seller.name) : 'AR Market BD Direct';
+
+    const newProduct = db.createProduct({
+      seller_id: seller_id || req.user!.id,
+      seller_name,
+      title: title.trim(),
+      description: description || '',
+      price: Number(price) || 0,
+      old_price: old_price ? Number(old_price) : undefined,
+      category: category || 'General',
+      stock: Number(stock) || 0,
+      status: status || 'active',
+      image_url: image_url || '',
+      video_url: video_url || '',
+      vendor_type: vendor_type || 'Retailer',
+      sku: sku || `ARM-${(vendor_type || 'RTL').toUpperCase().slice(0, 3)}-${Math.floor(1000 + Math.random() * 9000)}`,
+      brand: brand || 'Generic',
+      badge: badge || '',
+      is_featured: Boolean(is_featured),
+      special_offer_id: special_offer_id || '',
+      weight_kg: Number(weight_kg) || 0.5,
+      moq: Number(moq) || 1,
+      country_source: country_source || 'Bangladesh',
+      import_cost_bdt: Number(import_cost_bdt) || 0,
+      supplier_location: supplier_location || 'Dhaka',
+      meta_title: meta_title || '',
+      meta_keywords: meta_keywords || '',
+      meta_description: meta_description || '',
+      courier_status: courier_status || (vendor_type === 'Importer' ? 'locked' : 'ready_for_delivery'),
+    });
+
+    res.json({
+      success: true,
+      message: 'Product created successfully!',
+      product: newProduct,
+    });
+  } catch (error) {
+    console.error('Error creating product:', error);
+    res.status(500).json({ error: 'Failed to create product.' });
+  }
+});
+
+/**
+ * PUT /api/admin/products/:id
+ */
+adminRouter.put('/products/:id', (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    const updated = db.updateProduct(id, req.body);
+    if (!updated) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+    res.json({
+      success: true,
+      message: 'Product updated successfully!',
+      product: updated,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update product.' });
+  }
+});
+
+/**
+ * PATCH /api/admin/products/:id/courier-status
+ */
+adminRouter.patch('/products/:id/courier-status', (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const trackingId = `PATHAO-IMP-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const updated = db.updateProduct(id, {
+      courier_status: status || 'ready_for_delivery',
+    });
+
+    if (!updated) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: `Courier status changed to '${status || 'ready_for_delivery'}'. Automated Courier API unlocked with Tracking ID: ${trackingId}`,
+      product: updated,
+      trackingId,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update courier status.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/products/:id
+ */
+adminRouter.delete('/products/:id', (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    const deleted = db.deleteProductAdmin(id);
+    if (!deleted) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+    res.json({ success: true, message: 'Product deleted successfully!' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete product.' });
+  }
+});
+
+/**
+ * POST /api/admin/generate-product-meta
+ * Native AI Meta Generator Engine using @google/genai (model: gemini-3.8-flash)
+ */
+adminRouter.post('/generate-product-meta', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { title, category, vendor_type, brand, image_url, extra_context } = req.body;
+
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      res.status(400).json({ error: 'Product Title is required to generate AI Meta data.' });
+      return;
+    }
+
+    const memoryToken = `SEED_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    let aiResult: {
+      description: string;
+      meta_title: string;
+      meta_keywords: string;
+      meta_description: string;
+    } | null = null;
+
+    if (apiKey) {
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        const prompt = `You are an expert E-Commerce Copywriter & SEO Specialist for AR Market BD (Bangladesh Multi-Vendor E-Commerce Platform).
+Generate rich product description and SEO metadata for:
+- Product Title: "${title.trim()}"
+- Category: "${category || 'General'}"
+- Vendor Type: "${vendor_type || 'Retailer'}"
+- Brand: "${brand || 'Generic'}"
+${image_url ? `- Image Reference: ${image_url}` : ''}
+${extra_context ? `- Additional Context: ${extra_context}` : ''}
+- Unique Memory Token Seed: ${memoryToken}
+
+MANDATORY INSTRUCTIONS:
+1. "description" MUST follow this exact 4-step structure in Bengali:
+   ১. পরিচয় ও ওভারভিউ: [Step 1: Introduction & Product Overview]
+   ২. কাজ ও উপযোগিতা: [Step 2: Key Features & Specifications]
+   ৩. ব্যবহারের কারণ: [Step 3: Why Choose/Use This Item]
+   ৪. আমাদের থেকে কেনার কারণ: [Step 4: Why Buy From AR Market BD / Trust & Delivery Guarantee]
+2. "meta_title": Catchy, SEO-optimized title under 60 characters with brand/keyword.
+3. "meta_keywords": AT LEAST 10 highly relevant, comma-separated keywords.
+4. "meta_description": Engaging search engine snippet (120-160 characters).
+
+Return ONLY a valid raw JSON object with keys: "description", "meta_title", "meta_keywords", "meta_description". Do NOT wrap in markdown code blocks.`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+        });
+
+        const text = response.text?.trim() || '';
+        const cleanedJson = text.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+        aiResult = JSON.parse(cleanedJson);
+      } catch (err) {
+        console.warn('Gemini API call failed, using intelligent fallback generator:', err);
+      }
+    }
+
+    // Fallback Generator if API key is missing or failed
+    if (!aiResult) {
+      const pTitle = title.trim();
+      const pCat = category || 'General';
+      const pBrand = brand || 'AR Craft';
+      const vType = vendor_type || 'Retailer';
+
+      const desc = `১. পরিচয় ও ওভারভিউ:
+${pTitle} হল ${pBrand}-এর একটি প্রিমিয়াম মানের ${pCat} আইটেম। এটি আধুনিক ডিজাইন ও দীর্ঘস্থায়ী টেকসই মেটেরিয়াল দিয়ে তৈরি, যা দৈনন্দিন ব্যবহারে দারুণ অভিজ্ঞতা নিশ্চিত করে। (Memory Seed: ${memoryToken})
+
+২. কাজ ও উপযোগিতা:
+• উচ্চমানের উপাদান ও নিখুঁত ফিনিশিং
+• ${vType} ভেন্ডর কর্তৃক সরাসরি যাচাইকৃত আসল পণ্য
+• দৈনন্দিন ব্যবহার ও উপহার দেওয়ার জন্য অত্যন্ত উপযোগী
+• লাইটওয়েট এবং আধুনিক আকর্ষণীয় ডিজাইন
+
+৩. ব্যবহারের কারণ:
+আপনি যদি বাজারের সেরা কোয়ালিটি ও দীর্ঘস্থায়িত্ব প্রত্যাশা করেন, তবে ${pTitle} আপনার জন্য সেরা পছন্দ। এর চমৎকার বিল্ড কোয়ালিটি আপনাকে শতভাগ সন্তুষ্টি প্রদান করবে।
+
+৪. আমাদের থেকে কেনার কারণ:
+• AR Market BD থেকে পাবেন ১০০% অরিজিনাল গ্যারান্টি
+• দ্রুততম ক্যাশ অন ডেলিভারি (COD) সুবিধা
+• পণ্য চেক করে নেওয়ার সুযোগ ও সার্বক্ষণিক গ্রাহক সেবা`;
+
+      const keywords = `${pTitle.toLowerCase()}, ${pCat.toLowerCase()}, ${pBrand.toLowerCase()}, ${vType.toLowerCase()} BD, AR Market BD, buy ${pTitle.toLowerCase()} online, best ${pCat.toLowerCase()} price in BD, original ${pTitle.toLowerCase()}, BD online shopping, trusted seller BD`;
+
+      aiResult = {
+        description: desc,
+        meta_title: `${pTitle} - ${pBrand} | Best Price in BD | AR Market BD`,
+        meta_keywords: keywords,
+        meta_description: `Buy original ${pTitle} by ${pBrand} at best price in Bangladesh on AR Market BD. Fast delivery & cash on delivery available.`,
+      };
+    }
+
+    res.json({
+      success: true,
+      data: aiResult,
+      memoryToken,
+    });
+  } catch (error) {
+    console.error('Error in generate-product-meta:', error);
+    res.status(500).json({ error: 'Failed to generate AI Meta data.' });
+  }
 });

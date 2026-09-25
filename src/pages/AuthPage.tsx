@@ -317,22 +317,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
           <div className="mt-8 pt-6 border-t border-white/15 flex items-center justify-between text-xs text-teal-200">
             <span>AR Market BD Engine</span>
-            <button
-              type="button"
-              onClick={() => setIsMailboxOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors cursor-pointer text-[11px] font-bold"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>Dev Mailbox</span>
-            </button>
+            <span className="text-[11px] text-teal-300/80">Secure SSL Protected</span>
           </div>
         </div>
 
         {/* Right Col: Interactive Auth Form Card */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-200/80">
+        <div className="lg:col-span-7 bg-white rounded-3xl p-4 sm:p-8 md:p-10 shadow-xl border border-slate-200/80">
           {/* Tabs header */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 sm:pb-4 mb-6 gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
               <button
                 type="button"
                 onClick={() => {
@@ -406,14 +399,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               <div className="flex-1">
                 <p className="font-bold">Success</p>
                 <p className="text-[11px] text-emerald-700 mt-0.5">{successMessage}</p>
-                <button
-                  type="button"
-                  onClick={() => setIsMailboxOpen(true)}
-                  className="mt-2 text-xs font-bold text-[#008080] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>Open Dev Mailbox to inspect token</span>
-                </button>
               </div>
             </div>
           )}
@@ -726,16 +711,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-center gap-4 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setIsMailboxOpen(true)}
-                  className="font-bold text-[#008080] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>Check Dev Mailbox</span>
-                </button>
-                <span className="text-slate-300">|</span>
+              <div className="pt-2 flex items-center justify-center text-xs">
                 <button
                   type="button"
                   onClick={() => setMode('login')}

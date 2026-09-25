@@ -55,6 +55,7 @@ export const OrderManagementView: React.FC<OrderManagementViewProps> = ({ onShow
     const matchQuery =
       !searchQuery.trim() ||
       o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.buyer_customer_id && o.buyer_customer_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
       o.buyer_name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchStatus && matchQuery;
   });
@@ -133,10 +134,28 @@ export const OrderManagementView: React.FC<OrderManagementViewProps> = ({ onShow
                 <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3 px-4 font-mono font-bold text-slate-900">{ord.id}</td>
                   <td className="py-3 px-4">
-                    <span className="font-semibold text-slate-800">{ord.buyer_name}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-slate-800">{ord.buyer_name}</span>
+                      {ord.buyer_customer_id && (
+                        <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-slate-900 text-teal-300 border border-teal-500/30">
+                          {ord.buyer_customer_id}
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
-                    {ord.items.map((i) => `${i.title} (x${i.quantity})`).join(', ')}
+                  <td className="py-3 px-4 text-slate-600 max-w-sm">
+                    <div className="space-y-1">
+                      {ord.items.map((i, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-slate-800">{i.title} (x{i.quantity})</span>
+                          {i.shop_id && (
+                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              Shop: {i.shop_id}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td className="py-3 px-4 font-bold text-slate-900">৳{ord.total_amount.toFixed(2)}</td>
                   <td className="py-3 px-4">

@@ -18,10 +18,13 @@ function sanitizeUserProfile(user: User) {
     is_verified: user.is_verified,
     two_factor_enabled: user.two_factor_enabled,
     seller_status: user.seller_status,
+    business_type: user.business_type,
+    shop_id: user.shop_id,
     store_name: user.store_name,
     store_description: user.store_description,
     phone: user.phone || '',
     avatar: user.avatar || '',
+    cover_photo: user.cover_photo || '',
     address: user.address || '',
     bio: user.bio || '',
     created_at: user.created_at,
@@ -62,7 +65,7 @@ userRouter.get('/profile', (req: Request, res: Response): void => {
 userRouter.put('/profile', (req: Request, res: Response): void => {
   try {
     const userId = req.user!.id;
-    const { name, email, phone, avatar, address, bio, store_name, store_description } = req.body;
+    const { name, email, phone, avatar, cover_photo, address, bio, store_name, store_description } = req.body;
 
     const updates: Partial<User> = {};
 
@@ -104,6 +107,7 @@ userRouter.put('/profile', (req: Request, res: Response): void => {
     if (req.user!.role === 'seller' || req.user!.role === 'admin') {
       if (store_name !== undefined) updates.store_name = String(store_name).trim();
       if (store_description !== undefined) updates.store_description = String(store_description).trim();
+      if (cover_photo !== undefined) updates.cover_photo = String(cover_photo).trim();
     }
 
     const updatedUser = db.updateUser(userId, updates);

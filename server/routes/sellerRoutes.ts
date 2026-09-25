@@ -26,6 +26,7 @@ sellerRouter.get('/kyc', (req: Request, res: Response): void => {
       success: true,
       sellerStatus: user.seller_status || 'unverified',
       businessType: user.business_type || 'Retailer',
+      shopId: user.shop_id || null,
       kycData: user.kyc_data || null,
       storeName: user.store_name || user.name,
       phone: user.phone || '',
@@ -77,6 +78,15 @@ sellerRouter.post('/kyc', (req: Request, res: Response): void => {
       permanent_address,
       submitted_at: new Date().toISOString(),
     });
+
+    // Real-time Notification for Super Admin
+    const sellerName = updatedUser?.store_name || updatedUser?.name || req.user?.name || 'A seller';
+    db.notifyAdmins(
+      'New KYC Submission',
+      `${sellerName} submitted KYC documents for verification.`,
+      'verification',
+      'seller-verification'
+    );
 
     res.json({
       success: true,

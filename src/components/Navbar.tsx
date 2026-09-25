@@ -100,28 +100,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>·</span>
               </>
             )}
-            <button
-              onClick={() => setIsMailboxOpen(true)}
-              className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-0.5 rounded bg-teal-800/60 border border-teal-500/30 text-teal-100 hover:bg-teal-700/60 cursor-pointer"
-              title="View verification & password reset emails"
-            >
-              <Mail className="w-3 h-3" />
-              <span>Dev Mailbox</span>
-              {devEmails.length > 0 && (
-                <span className="w-4 h-4 bg-amber-400 text-slate-900 font-bold rounded-full text-[9px] flex items-center justify-center">
-                  {devEmails.length}
-                </span>
-              )}
-            </button>
             {!user && (
               <>
-                <span>·</span>
                 <button
                   onClick={() => onNavigatePage('become-a-seller', '/become-a-seller')}
                   className="hover:text-white transition-colors cursor-pointer"
                 >
                   Become a Seller
                 </button>
+                <span>·</span>
               </>
             )}
             <span>·</span>
@@ -262,10 +249,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                 }}
                 className="p-2 sm:px-3 sm:py-2 text-slate-700 hover:text-[#008080] hover:bg-[#008080]/5 rounded-xl transition-colors cursor-pointer flex items-center gap-2 border border-slate-200/80"
-                title={`${user.name} (${user.role}) - View Dashboard`}
+                title={`${user.name} (${user.role === 'buyer' ? user.customer_id || 'Customer' : user.role === 'seller' ? user.shop_id || 'Seller' : 'Super Admin'}) - View Dashboard`}
               >
-                <div className="w-7 h-7 rounded-full bg-[#008080]/10 text-[#008080] flex items-center justify-center font-bold text-xs">
-                  {user.name.charAt(0).toUpperCase()}
+                <div className="w-7 h-7 rounded-full bg-[#008080]/10 text-[#008080] flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 border border-slate-200">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="hidden lg:flex flex-col text-left">
                   <span className="text-xs font-semibold text-slate-800 leading-tight flex items-center gap-1">
@@ -273,8 +264,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {user.is_verified && <ShieldCheck className="w-3 h-3 text-emerald-600" />}
                     {user.two_factor_enabled && <Lock className="w-2.5 h-2.5 text-[#008080]" />}
                   </span>
-                  <span className="text-[10px] text-slate-500 leading-tight">
-                    My Account
+                  <span className="text-[10px] text-slate-500 leading-tight font-mono">
+                    {user.role === 'buyer'
+                      ? (user.customer_id || 'Customer')
+                      : user.role === 'seller'
+                      ? (user.shop_id || 'Seller')
+                      : 'Super Admin'}
                   </span>
                 </div>
               </button>
@@ -408,53 +403,73 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </div>
 
-          <div className="pt-2 flex items-center justify-between text-xs">
+          <div className="pt-3 flex flex-col gap-2.5 text-xs">
             {user ? (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  if (user.role === 'admin') {
-                    onNavigatePage('admin', '/admin');
-                  } else {
-                    onNavigatePage('customer-dashboard', '/customer-dashboard');
-                  }
-                }}
-                className="text-[#008080] font-semibold flex items-center gap-1.5"
-              >
-                <User className="w-4 h-4" /> My Account ({user.name.split(' ')[0]})
-              </button>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-teal-50/60 border border-teal-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (user.role === 'admin') {
+                      onNavigatePage('admin', '/admin');
+                    } else if (user.role === 'seller') {
+                      const catKey = (user.business_type || 'Retailer').toLowerCase();
+                      onNavigatePage(`seller-${catKey}-dashboard`, `/seller/${catKey}/dashboard`);
+                    } else {
+                      onNavigatePage('customer-dashboard', '/customer-dashboard');
+                    }
+                  }}
+                  className="text-[#008080] font-bold flex items-center gap-2 cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#008080]/15 text-[#008080] flex items-center justify-center font-bold text-[11px]">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span>My Account ({user.name.split(' ')[0]})</span>
+                </button>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#008080] text-white uppercase">
+                  {user.role}
+                </span>
+              </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onOpenAuth('signin');
-                  }}
-                  className="text-[#008080] font-bold flex items-center gap-1"
-                >
-                  <User className="w-3.5 h-3.5" /> Login
-                </button>
-                <span className="text-slate-300">|</span>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onOpenAuth('register');
-                  }}
-                  className="text-[#008080] font-bold flex items-center gap-1"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> Sign Up
-                </button>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-2 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenAuth('signin');
+                    }}
+                    className="flex-1 py-2 text-center text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <User className="w-3.5 h-3.5 text-[#008080]" />
+                    <span>Login</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenAuth('register');
+                    }}
+                    className="flex-1 py-2 text-center text-xs font-bold text-white bg-[#008080] hover:bg-[#006666] rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                    <span>Sign Up</span>
+                  </button>
+                </div>
               </div>
             )}
+
             {!user && (
               <button
+                type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onNavigatePage('become-a-seller', '/become-a-seller');
                 }}
-                className="text-slate-600 font-medium"
+                className="w-full py-2 px-3 text-center text-xs font-bold text-[#008080] bg-[#008080]/10 hover:bg-[#008080]/20 rounded-xl border border-[#008080]/20 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
-                Become a Seller
+                <Store className="w-3.5 h-3.5" />
+                <span>Become a Verified Seller</span>
               </button>
             )}
           </div>
