@@ -63,10 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'sellers', label: 'Sellers', path: '/sellers' },
     { id: 'about', label: 'About Us', path: '/about' },
     { id: 'contact', label: 'Contact Us', path: '/contact' },
-    { id: 'group', label: 'Group', path: '/group', isSpecial: true },
-    ...(user?.role === 'admin'
-      ? [{ id: 'admin', label: 'Admin Dashboard', path: '/admin', isSpecial: true, dotColor: 'bg-teal-400' }]
-      : []),
+    { id: 'market-feed', label: 'Market Feed', path: '/market-feed', isSpecial: true },
   ];
 
   return (
@@ -86,20 +83,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-4 text-teal-100">
-            {user?.role === 'admin' && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onNavigatePage('admin', '/admin')}
-                  className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-400 text-slate-900 font-bold hover:bg-amber-300 cursor-pointer shadow-xs"
-                  title="Open Super Admin Dashboard"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-slate-900" />
-                  <span>Admin Dashboard</span>
-                </button>
-                <span>·</span>
-              </>
-            )}
             {!user && (
               <>
                 <button
@@ -111,12 +94,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>·</span>
               </>
             )}
-            <span>·</span>
             <button
-              onClick={() => onNavigatePage('group', '/group')}
+              onClick={() => onNavigatePage('market-feed', '/market-feed')}
               className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <Users2 className="w-3 h-3" /> Community Group
+              <Users2 className="w-3 h-3" /> Market Feed
             </button>
           </div>
         </div>

@@ -48,6 +48,8 @@ export interface User {
   cover_photo?: string;
   address?: string;
   bio?: string;
+  is_locked?: boolean;
+  lock_reason?: string;
   notifications?: NotificationItem[];
   created_at: string;
   updated_at: string;
@@ -517,6 +519,23 @@ export const db = {
     return users.find((u) => u.email.toLowerCase() === normalized);
   },
 
+  findUserByEmailAndRole(email: string, role: string): User | undefined {
+    const normalized = email.trim().toLowerCase();
+    return users.find((u) => u.email.toLowerCase() === normalized && u.role === role);
+  },
+
+  findUserByPhone(phone: string): User | undefined {
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').trim();
+    return users.find((u) => u.phone && u.phone.replace(/[\s\-\(\)]/g, '').trim() === cleanPhone);
+  },
+
+  findUserByPhoneAndRole(phone: string, role: string): User | undefined {
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').trim();
+    return users.find(
+      (u) => u.role === role && u.phone && u.phone.replace(/[\s\-\(\)]/g, '').trim() === cleanPhone
+    );
+  },
+
   findUserById(id: string): User | undefined {
     return users.find((u) => u.id === id);
   },
@@ -666,6 +685,68 @@ export const db = {
     seller.updated_at = new Date().toISOString();
     saveUsersToDisk();
     return seller;
+  },
+
+  lockSellerAccount(id: string, is_locked: boolean, reason?: string): User | undefined {
+    const seller = users.find((u) => u.id === id && u.role === 'seller');
+    if (!seller) return undefined;
+
+    seller.is_locked = is_locked;
+    if (reason !== undefined) seller.lock_reason = reason;
+    seller.updated_at = new Date().toISOString();
+    saveUsersToDisk();
+    return seller;
+  },
+
+  updateSellerAdmin(id: string, data: Partial<User> & { present_address?: string; permanent_address?: string }): User | undefined {
+    const seller = users.find((u) => u.id === id && u.role === 'seller');
+    if (!seller) return undefined;
+
+    if (data.name !== undefined) seller.name = data.name;
+    if (data.store_name !== undefined) seller.store_name = data.store_name;
+    if (data.email !== undefined) seller.email = data.email.toLowerCase().trim();
+    if (data.phone !== undefined) seller.phone = data.phone;
+    if (data.address !== undefined) seller.address = data.address;
+    if (data.bio !== undefined) seller.bio = data.bio;
+    if (data.store_description !== undefined) seller.store_description = data.store_description;
+    if (data.seller_status !== undefined) seller.seller_status = data.seller_status;
+    if (data.is_locked !== undefined) seller.is_locked = data.is_locked;
+    if (data.lock_reason !== undefined) seller.lock_reason = data.lock_reason;
+
+    if (data.present_address !== undefined || data.permanent_address !== undefined) {
+      if (!seller.kyc_data) {
+        seller.kyc_data = {};
+      }
+      if (data.present_address !== undefined) {
+        seller.kyc_data.present_address = data.present_address;
+        seller.address = data.present_address;
+      }
+      if (data.permanent_address !== undefined) {
+        seller.kyc_data.permanent_address = data.permanent_address;
+      }
+    }
+
+    if (data.business_type !== undefined && data.business_type !== seller.business_type) {
+      seller.business_type = data.business_type;
+      if (!data.shop_id) {
+        seller.shop_id = generateShopId(data.business_type);
+      }
+    }
+    if (data.shop_id !== undefined && data.shop_id.trim()) {
+      seller.shop_id = data.shop_id.trim();
+    }
+
+    seller.updated_at = new Date().toISOString();
+    saveUsersToDisk();
+    return seller;
+  },
+
+  deleteSellerAccount(id: string): boolean {
+    const index = users.findIndex((u) => u.id === id && u.role === 'seller');
+    if (index === -1) return false;
+    users.splice(index, 1);
+    saveUsersToDisk();
+    return true;
   },
 
   addUserNotification(userId: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {

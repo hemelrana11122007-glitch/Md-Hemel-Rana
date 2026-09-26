@@ -38,6 +38,26 @@ h1, h2, h3, .font-display {
   scrollbar-width: none;
 }
 
+/* Thin Teal Custom Scrollbar for independent dual-column scrolling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 128, 128, 0.22);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 128, 128, 0.55);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 128, 128, 0.25) transparent;
+}
+
 /* Touch-friendly interactive items on mobile */
 @media (max-width: 640px) {
   button, a, input, select, textarea {

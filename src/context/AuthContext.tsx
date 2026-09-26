@@ -22,7 +22,7 @@ export interface AuthContextType {
     error?: string;
     user?: AuthUser;
   }>;
-  register: (data: { name: string; email: string; password: string; role?: string; phone?: string; business_type?: string }) => Promise<{
+  register: (data: { name: string; store_name?: string; email: string; password: string; role?: string; phone?: string; business_type?: string }) => Promise<{
     success: boolean;
     message?: string;
     error?: string;
@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const register = useCallback(
-    async (data: { name: string; email: string; password: string; role?: string; phone?: string; business_type?: string }) => {
+    async (data: { name: string; store_name?: string; email: string; password: string; role?: string; phone?: string; business_type?: string }) => {
       const res = await authApi.register(data);
       if (res.success && res.user) {
         setUser(res.user);

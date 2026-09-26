@@ -32,6 +32,8 @@ export interface AuthUser {
   cover_photo?: string;
   address?: string;
   bio?: string;
+  is_locked?: boolean;
+  lock_reason?: string;
   created_at: string;
 }
 
@@ -145,7 +147,7 @@ export const authApi = {
   /**
    * Register a new user
    */
-  async register(data: { name: string; email: string; password: string; role?: string; phone?: string; business_type?: string }): Promise<{
+  async register(data: { name: string; store_name?: string; email: string; password: string; role?: string; phone?: string; business_type?: string }): Promise<{
     success: boolean;
     message?: string;
     error?: string;

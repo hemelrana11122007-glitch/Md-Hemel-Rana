@@ -56,20 +56,48 @@ export interface Brand {
   productsCount: number;
 }
 
-export interface GroupPost {
+export interface MarketFeedComment {
   id: string;
   author: {
     name: string;
     role: string;
     avatar: string;
   };
+  content: string;
+  timeAgo: string;
+}
+
+export interface MarketFeedPost {
+  id: string;
+  authorId?: string;
+  sellerId?: string;
+  sellerStatus?: string;
+  isLocked?: boolean;
+  author: {
+    id?: string;
+    name: string;
+    role: string;
+    avatar: string;
+    company?: string;
+    location?: string;
+  };
   title: string;
   preview: string;
+  content?: string;
   repliesCount: number;
   likesCount: number;
   timeAgo: string;
   tag: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  isLiked?: boolean;
+  isFollowing?: boolean;
+  isSaved?: boolean;
+  sourceType?: 'own' | 'seller' | 'community';
+  comments?: MarketFeedComment[];
 }
+
+export type GroupPost = MarketFeedPost;
 
 export interface CartItem {
   product: Product;

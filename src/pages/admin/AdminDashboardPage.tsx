@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { AdminSidebar, AdminViewKey } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
@@ -15,6 +15,7 @@ import { AnalyticsReportsView } from '../../components/admin/views/AnalyticsRepo
 import { ManageProductsView } from '../../components/admin/views/ManageProductsView';
 import { GeneralModuleView } from '../../components/admin/views/GeneralModuleView';
 import { useAuth } from '../../context/AuthContext';
+import { adminApi } from '../../services/adminApi';
 
 interface AdminDashboardPageProps {
   onNavigateHome: () => void;
@@ -32,6 +33,65 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [activeView, setActiveView] = useState<AdminViewKey>('overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isProfileSecurityOpen, setIsProfileSecurityOpen] = useState(false);
+
+  // Notification & Real-Time Badge Counts
+  const [newSellersCount, setNewSellersCount] = useState<number>(0);
+  const [newCustomersCount, setNewCustomersCount] = useState<number>(0);
+  const [pendingVerificationsCount, setPendingVerificationsCount] = useState<number>(0);
+
+  const fetchLiveCounts = useCallback(async () => {
+    try {
+      const res = await adminApi.getNotifications();
+      if (res.success && res.notifications) {
+        const notifs = res.notifications;
+        const unreadSellers = notifs.filter(
+          (n: any) =>
+            (n.unread || !n.read) &&
+            (n.targetView === 'manage-sellers' ||
+              (n.title && n.title.toLowerCase().includes('seller registration')))
+        ).length;
+
+        const unreadCustomers = notifs.filter(
+          (n: any) =>
+            (n.unread || !n.read) &&
+            (n.targetView === 'manage-customers' ||
+              (n.title && n.title.toLowerCase().includes('customer account')))
+        ).length;
+
+        const unreadVerifications = notifs.filter(
+          (n: any) =>
+            (n.unread || !n.read) &&
+            (n.targetView === 'seller-verification' || n.category === 'verification')
+        ).length;
+
+        setNewSellersCount(unreadSellers);
+        setNewCustomersCount(unreadCustomers);
+        setPendingVerificationsCount(unreadVerifications);
+      }
+    } catch {
+      // Ignored in background poll
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveCounts();
+    const interval = setInterval(fetchLiveCounts, 3500);
+    return () => clearInterval(interval);
+  }, [fetchLiveCounts]);
+
+  const handleSelectView = (view: AdminViewKey) => {
+    setActiveView(view);
+    if (view === 'manage-sellers') {
+      adminApi.markNotificationsRead(undefined, 'manage-sellers');
+      setNewSellersCount(0);
+    } else if (view === 'manage-customers') {
+      adminApi.markNotificationsRead(undefined, 'manage-customers');
+      setNewCustomersCount(0);
+    } else if (view === 'seller-verification') {
+      adminApi.markNotificationsRead(undefined, 'seller-verification');
+      setPendingVerificationsCount(0);
+    }
+  };
 
   // Exit Dashboard handler: Clears HTTP-only cookies and redirects to Home Page
   const handleExitDashboard = async () => {
@@ -54,10 +114,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         {/* Sidebar Navigation */}
         <AdminSidebar
           activeView={activeView}
-          onSelectView={(view) => setActiveView(view)}
+          onSelectView={handleSelectView}
           onExitDashboard={handleExitDashboard}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          pendingVerificationsCount={pendingVerificationsCount}
+          newSellersCount={newSellersCount}
+          newCustomersCount={newCustomersCount}
         />
 
         {/* Main Content Area */}
@@ -69,7 +132,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             onOpenProfileSecurity={() => setIsProfileSecurityOpen(true)}
             onExitDashboard={handleExitDashboard}
             onNavigateHome={onNavigateHome}
-            onNavigateView={(view) => setActiveView(view)}
+            onNavigateView={handleSelectView}
           />
 
           {/* Dynamic View Body */}

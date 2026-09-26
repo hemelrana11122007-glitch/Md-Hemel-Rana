@@ -127,6 +127,8 @@ interface AdminSidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   pendingVerificationsCount?: number;
+  newSellersCount?: number;
+  newCustomersCount?: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -136,6 +138,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   pendingVerificationsCount = 0,
+  newSellersCount = 0,
+  newCustomersCount = 0,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [seoExpanded, setSeoExpanded] = useState(
@@ -183,8 +187,20 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       title: 'User & Admin Management',
       items: [
-        { key: 'manage-sellers', label: 'Manage Sellers', icon: Users },
-        { key: 'manage-customers', label: 'Manage Customers', icon: UserCheck },
+        {
+          key: 'manage-sellers',
+          label: 'Manage Sellers',
+          icon: Users,
+          badge: newSellersCount > 0 ? newSellersCount : undefined,
+          badgeColor: 'bg-rose-500 text-white font-black animate-pulse shadow-xs',
+        },
+        {
+          key: 'manage-customers',
+          label: 'Manage Customers',
+          icon: UserCheck,
+          badge: newCustomersCount > 0 ? newCustomersCount : undefined,
+          badgeColor: 'bg-rose-500 text-white font-black animate-pulse shadow-xs',
+        },
         { key: 'role-permission', label: 'Role & Permission', icon: ShieldCheck },
         { key: 'admin-management', label: 'Admin Management', icon: UserCog },
         { key: 'ai-moderation', label: 'AI Moderation', icon: Bot },
@@ -221,7 +237,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         { key: 'contact-support', label: 'Contact & Support', icon: HelpCircle },
       ],
     },
-  ], [pendingVerificationsCount]);
+  ], [pendingVerificationsCount, newSellersCount, newCustomersCount]);
 
   // Filter items if user uses sidebar search
   const filteredCategories = useMemo(() => {

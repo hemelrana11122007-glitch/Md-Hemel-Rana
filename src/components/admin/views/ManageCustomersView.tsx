@@ -29,6 +29,8 @@ export const ManageCustomersView: React.FC<ManageCustomersViewProps> = ({ onShow
       if (res.success && res.customers) {
         setCustomers(res.customers);
       }
+      // Automatically mark customer registration notifications as read
+      adminApi.markNotificationsRead(undefined, 'manage-customers');
     } catch {
       onShowToast('Failed to load registered customers');
     } finally {

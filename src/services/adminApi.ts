@@ -29,7 +29,11 @@ export interface SellerRecord {
   phone?: string;
   avatar?: string;
   address?: string;
+  present_address?: string;
+  permanent_address?: string;
   bio?: string;
+  is_locked?: boolean;
+  lock_reason?: string;
   is_verified: boolean;
   two_factor_enabled: boolean;
   productCount: number;
@@ -226,6 +230,71 @@ export const adminApi = {
   },
 
   /**
+   * Lock or unlock a seller account
+   */
+  async lockSeller(
+    id: string,
+    is_locked: boolean,
+    reason?: string
+  ): Promise<{ success: boolean; message?: string; is_locked?: boolean; error?: string }> {
+    try {
+      const res = await secureFetch(`/api/admin/sellers/${id}/lock`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_locked, reason }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        return { success: false, error: json.error || 'Failed to update seller lock status' };
+      }
+      return { success: true, message: json.message, is_locked: json.is_locked };
+    } catch {
+      return { success: false, error: 'Network error updating seller lock status' };
+    }
+  },
+
+  /**
+   * Update full seller profile by Admin
+   */
+  async updateSellerAdmin(
+    id: string,
+    data: Partial<SellerRecord>
+  ): Promise<{ success: boolean; message?: string; seller?: any; error?: string }> {
+    try {
+      const res = await secureFetch(`/api/admin/sellers/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        return { success: false, error: json.error || 'Failed to update seller profile' };
+      }
+      return { success: true, message: json.message, seller: json.seller };
+    } catch {
+      return { success: false, error: 'Network error updating seller profile' };
+    }
+  },
+
+  /**
+   * Delete seller account permanently
+   */
+  async deleteSeller(
+    id: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const res = await secureFetch(`/api/admin/sellers/${id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        return { success: false, error: json.error || 'Failed to delete seller account' };
+      }
+      return { success: true, message: json.message };
+    } catch {
+      return { success: false, error: 'Network error deleting seller account' };
+    }
+  },
+
+  /**
    * Get all orders
    */
   async getOrders(): Promise<{ success: boolean; orders?: OrderRecord[]; error?: string }> {
@@ -388,11 +457,11 @@ export const adminApi = {
   /**
    * Mark Admin Notifications as Read
    */
-  async markNotificationsRead(notificationId?: string): Promise<{ success: boolean }> {
+  async markNotificationsRead(notificationId?: string, targetView?: string): Promise<{ success: boolean }> {
     try {
       const res = await secureFetch('/api/admin/notifications/mark-read', {
         method: 'PATCH',
-        body: JSON.stringify({ notificationId }),
+        body: JSON.stringify({ notificationId, targetView }),
       });
       return { success: res.ok };
     } catch {

@@ -187,10 +187,10 @@ export const Footer: React.FC<FooterProps> = ({
               <li>
                 <button
                   type="button"
-                  onClick={() => onNavigatePage('group', '/group')}
+                  onClick={() => onNavigatePage('market-feed', '/market-feed')}
                   className="hover:text-white transition-colors text-left cursor-pointer"
                 >
-                  Community Group Discussions
+                  Market Feed Discussions
                 </button>
               </li>
               <li>

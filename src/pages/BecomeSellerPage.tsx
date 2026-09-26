@@ -12,7 +12,14 @@ import {
   Users,
   Lock,
   ArrowLeft,
-  X
+  X,
+  Eye,
+  EyeOff,
+  User,
+  Phone,
+  Mail,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -48,12 +55,35 @@ export const BecomeSellerPage: React.FC<BecomeSellerPageProps> = ({
   // Form State
   const [businessType, setBusinessType] = useState('Wholesaler');
   const [companyName, setCompanyName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('+880');
+  const [phoneDigits, setPhoneDigits] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Password Strength Live Requirements Validation
+  const hasMinLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password);
+  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value;
+    let digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('880') && digits.length > 3) {
+      digits = digits.slice(3);
+    }
+    if (digits.length > 10) {
+      digits = digits.slice(0, 10);
+    }
+    setPhoneDigits(digits);
+  };
 
   const handleGetStarted = (categoryKey: string) => {
     const key = categoryKey.toLowerCase();
@@ -76,20 +106,24 @@ export const BecomeSellerPage: React.FC<BecomeSellerPageProps> = ({
       setErrorMessage('Please enter your Store / Company Name.');
       return;
     }
+    if (!ownerName.trim()) {
+      setErrorMessage('Please enter the Owner Full Name.');
+      return;
+    }
     if (!email.trim()) {
       setErrorMessage('Please enter your Business Email Address.');
       return;
     }
-    if (!phone.trim()) {
-      setErrorMessage('Please enter your Mobile Phone Number.');
+    if (!phoneDigits.trim() || phoneDigits.length !== 10) {
+      setErrorMessage('Please enter your 10-digit mobile number (e.g. 1712345678).');
       return;
     }
     if (!password) {
       setErrorMessage('Please set an Account Password.');
       return;
     }
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long.');
+    if (!isPasswordValid) {
+      setErrorMessage('Password must satisfy all security requirements (8+ chars, uppercase, lowercase, number, special char).');
       return;
     }
     if (password !== confirmPassword) {
@@ -99,12 +133,14 @@ export const BecomeSellerPage: React.FC<BecomeSellerPageProps> = ({
 
     setIsSubmitting(true);
     try {
+      const fullPhoneNumber = `+880${phoneDigits.trim()}`;
       const res = await register({
-        name: companyName,
-        email,
+        name: ownerName.trim(),
+        store_name: companyName.trim(),
+        email: email.trim().toLowerCase(),
         password,
         role: 'seller',
-        phone,
+        phone: fullPhoneNumber,
         business_type: businessType,
       });
 
@@ -351,82 +387,164 @@ export const BecomeSellerPage: React.FC<BecomeSellerPageProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Store / Company Name <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder={`e.g. ${businessType} BD Trading Ltd.`}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
-                />
+                <div className="relative">
+                  <Store className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder={`e.g. ${businessType} BD Trading Ltd.`}
+                    className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
+                  />
+                </div>
               </div>
 
-              {/* 3. Email Address */}
+              {/* 3. Owner Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Owner Full Name <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    placeholder="e.g. Md Tariqul Islam"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
+                  />
+                </div>
+              </div>
+
+              {/* 4. Email Address */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Email Address <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seller@armarketbd.com"
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
-                />
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seller@armarketbd.com"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
+                  />
+                </div>
               </div>
 
-              {/* 4. Mobile Number */}
+              {/* 5. Mobile Number */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Mobile Number <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+8801712345678"
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Mobile Number <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-slate-400">{phoneDigits.length}/10 Digits</span>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <span className="text-[11px] font-extrabold text-[#008080] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                      BD +880
+                    </span>
+                  </div>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    value={phoneDigits}
+                    onChange={handlePhoneChange}
+                    placeholder="1712345678"
+                    className="w-full pl-24 pr-3 py-2.5 text-xs font-mono font-semibold rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Prefix +880 is locked. Type remaining 10 digits (e.g. 1712345678).
+                </p>
               </div>
 
-              {/* 5 & 6. Set Password & Confirm Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 6 & 7. Set Password & Confirm Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Set Password <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
-                  />
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Confirm Password <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
-                  />
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-[#008080] focus:ring-1 focus:ring-[#008080]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* 7. Verify & Register Button */}
+              {/* Password Requirements Checklist */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-[10px]">
+                <div className="grid grid-cols-2 gap-1">
+                  <span className={`flex items-center gap-1 ${hasMinLength ? 'text-emerald-700 font-bold' : 'text-slate-500'}`}>
+                    <Check className="w-3 h-3" /> Min 8 chars
+                  </span>
+                  <span className={`flex items-center gap-1 ${hasUppercase ? 'text-emerald-700 font-bold' : 'text-slate-500'}`}>
+                    <Check className="w-3 h-3" /> 1 uppercase
+                  </span>
+                  <span className={`flex items-center gap-1 ${hasLowercase ? 'text-emerald-700 font-bold' : 'text-slate-500'}`}>
+                    <Check className="w-3 h-3" /> 1 lowercase
+                  </span>
+                  <span className={`flex items-center gap-1 ${hasNumber ? 'text-emerald-700 font-bold' : 'text-slate-500'}`}>
+                    <Check className="w-3 h-3" /> 1 number
+                  </span>
+                  <span className={`flex items-center gap-1 col-span-2 ${hasSpecialChar ? 'text-emerald-700 font-bold' : 'text-slate-500'}`}>
+                    <Check className="w-3 h-3" /> 1 special character (@, #, $, %, etc.)
+                  </span>
+                </div>
+              </div>
+
+              {/* 8. Verify & Register Button */}
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isPasswordValid}
                   className="w-full py-3.5 px-4 bg-[#008080] hover:bg-[#006666] text-white font-bold text-xs rounded-xl shadow-md shadow-[#008080]/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (

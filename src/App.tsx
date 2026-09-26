@@ -11,7 +11,7 @@ import { ImportPage } from './pages/ImportPage';
 import { SellersPage } from './pages/SellersPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
-import { GroupPage } from './pages/GroupPage';
+import { MarketFeedPage } from './pages/MarketFeedPage';
 import { AuthPage } from './pages/AuthPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { CustomerDashboardPage } from './pages/CustomerDashboardPage';
@@ -32,7 +32,7 @@ import { useAuth } from './context/AuthContext';
 
 // Data & Types
 import { PRODUCTS, SELLERS } from './data/mockData';
-import { Product, CartItem, Seller, GroupPost } from './types/marketplace';
+import { Product, CartItem, Seller, MarketFeedPost } from './types/marketplace';
 import { CheckCircle2, X, Mail, Home, ShoppingBag, Heart, ShoppingCart, User } from 'lucide-react';
 
 export default function App() {
@@ -54,7 +54,7 @@ export default function App() {
     if (clean.includes('seller')) return 'sellers';
     if (clean.includes('about')) return 'about';
     if (clean.includes('contact')) return 'contact';
-    if (clean.includes('group')) return 'group';
+    if (clean.includes('market-feed') || clean.includes('group')) return 'market-feed';
     if (clean.includes('admin')) return 'admin';
     if (clean.includes('login')) return 'login';
     if (clean.includes('register')) return 'register';
@@ -88,7 +88,7 @@ export default function App() {
   const [authModalToken, setAuthModalToken] = useState<string>('');
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [isDiscussionOpen, setIsDiscussionOpen] = useState(false);
-  const [selectedDiscussionPost, setSelectedDiscussionPost] = useState<GroupPost | null>(null);
+  const [selectedDiscussionPost, setSelectedDiscussionPost] = useState<MarketFeedPost | null>(null);
   const [taxonomyModalType, setTaxonomyModalType] = useState<'categories' | 'brands' | null>(null);
 
   // Check URL query parameters for verification or reset tokens
@@ -469,8 +469,8 @@ export default function App() {
 
         {activePage === 'contact' && <ContactPage />}
 
-        {activePage === 'group' && (
-          <GroupPage
+        {(activePage === 'market-feed' || activePage === 'group') && (
+          <MarketFeedPage
             onJoinDiscussion={() => {
               setSelectedDiscussionPost(null);
               setIsDiscussionOpen(true);

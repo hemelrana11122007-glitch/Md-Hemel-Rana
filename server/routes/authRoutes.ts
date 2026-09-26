@@ -65,14 +65,27 @@ authRouter.post(
   checkValidation,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { name, email, password, role = 'buyer', phone, business_type = 'Retailer' } = req.body;
+      const { name, store_name, email, password, role = 'buyer', phone, business_type = 'Retailer' } = req.body;
 
-      const existingUser = db.findUserByEmail(email);
-      if (existingUser) {
+      // Uniqueness rule: Allow max 1 Seller and 1 Customer account per email and phone
+      const accountType = role === 'seller' ? 'Seller' : 'Customer';
+      
+      const existingEmailRole = db.findUserByEmailAndRole(email, role);
+      if (existingEmailRole) {
         res.status(409).json({
-          error: 'An account with this email address already exists.',
+          error: `This Email Address is already registered for a ${accountType} account.`,
         });
         return;
+      }
+
+      if (phone && phone.trim()) {
+        const existingPhoneRole = db.findUserByPhoneAndRole(phone, role);
+        if (existingPhoneRole) {
+          res.status(409).json({
+            error: `This Mobile Number is already registered for a ${accountType} account.`,
+          });
+          return;
+        }
       }
 
       // Password hashing using bcrypt with cost factor 12
@@ -84,14 +97,14 @@ authRouter.post(
       const verification_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
       const user = db.createUser({
-        name,
+        name: name || store_name,
         email,
         password_hash,
         role: role as 'buyer' | 'seller',
-        phone,
+        phone: phone || '',
         business_type: role === 'seller' ? business_type : undefined,
         seller_status: role === 'seller' ? 'unverified' : undefined,
-        store_name: role === 'seller' ? name : undefined,
+        store_name: role === 'seller' ? (store_name || name) : undefined,
         is_verified: false,
         verification_token,
         verification_token_expires,
@@ -104,6 +117,24 @@ authRouter.post(
 
       // Send verification email via Nodemailer
       await emailService.sendVerificationEmail(user.email, verification_token, user.name);
+
+      // Real-time Admin Notification & Sidebar Badge Alert for new registrations
+      if (role === 'seller') {
+        const storeOrName = user.store_name || user.name;
+        db.notifyAdmins(
+          `New Seller Registration: ${storeOrName}`,
+          `New merchant account registered: ${storeOrName} (${user.business_type || 'Retailer'}). Shop ID: ${user.shop_id || 'Pending'}.`,
+          'verification',
+          'manage-sellers'
+        );
+      } else if (role === 'buyer') {
+        db.notifyAdmins(
+          `New Customer Account Created: ${user.name}`,
+          `New customer account registered: ${user.name} (${user.email}). Customer ID: ${user.customer_id || 'Assigned'}.`,
+          'alert',
+          'manage-customers'
+        );
+      }
 
       // Issue Access & Refresh session tokens immediately for Auto-Login
       const tokenPayload = { userId: user.id, email: user.email, role: user.role };

@@ -1,19 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Users2, MessageSquare, ThumbsUp, Clock, PlusCircle, ArrowRight } from 'lucide-react';
-import { GROUP_POSTS } from '../data/mockData';
-import { GroupPost } from '../types/marketplace';
+import { MARKET_FEED_POSTS } from '../data/mockData';
+import { MarketFeedPost } from '../types/marketplace';
 
-interface CommunityGroupProps {
+interface MarketFeedProps {
   onJoinDiscussion: () => void;
-  onViewPost: (post: GroupPost) => void;
+  onViewPost: (post: MarketFeedPost) => void;
 }
 
-export const CommunityGroup: React.FC<CommunityGroupProps> = ({
+export const MarketFeed: React.FC<MarketFeedProps> = ({
   onJoinDiscussion,
   onViewPost,
 }) => {
+  // Live Seller Status Registry for Auto-Hide / Restore on Homepage Section
+  const [sellerStatusMap, setSellerStatusMap] = useState<
+    Record<string, { status: string; is_locked: boolean; name: string }>
+  >({});
+
+  const fetchSellerStatuses = useCallback(async () => {
+    try {
+      const res = await fetch('/api/market-feed/sellers-status', { credentials: 'include' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.statusMap) {
+          setSellerStatusMap(json.statusMap);
+        }
+      }
+    } catch {
+      // Ignore background poll errors
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSellerStatuses();
+    const interval = setInterval(fetchSellerStatuses, 4000);
+    return () => clearInterval(interval);
+  }, [fetchSellerStatuses]);
+
+  // Filter posts based on seller status (Auto-hide suspended or locked sellers)
+  const visiblePosts = useMemo(() => {
+    return MARKET_FEED_POSTS.filter((post) => {
+      const authorId = post.authorId || post.author.id;
+      const authorNameLower = post.author.name?.toLowerCase();
+
+      const sellerInfo = authorId && sellerStatusMap[authorId]
+        ? sellerStatusMap[authorId]
+        : authorNameLower && sellerStatusMap[authorNameLower]
+        ? sellerStatusMap[authorNameLower]
+        : null;
+
+      if (sellerInfo) {
+        if (sellerInfo.is_locked || sellerInfo.status === 'suspended') {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [sellerStatusMap]);
+
   return (
-    <section id="group-section" className="py-14 bg-[#F8FAFA] border-b border-slate-100 scroll-mt-20">
+    <section id="market-feed-section" className="py-14 bg-[#F8FAFA] border-b border-slate-100 scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Box Container */}
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden p-6 sm:p-8 lg:p-10">
@@ -25,15 +71,15 @@ export const CommunityGroup: React.FC<CommunityGroupProps> = ({
               </div>
               <div>
                 <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#008080]">
-                  <span>Community Group & Forum</span>
+                  <span>Market Feed & Discussions</span>
                   <span>·</span>
                   <span className="text-slate-400 font-normal">24,500+ Active Members</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-1 font-display">
-                  Marketplace Community Discussions
+                  Market Feed Discussions
                 </h2>
                 <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-                  Connect directly with other buyers, wholesalers, and freight brokers. Share vendor reviews, coordinate group-buys, and get trade advice.
+                  Connect directly with verified merchants, wholesale buyers, and freight brokers. Share vendor reviews, explore bulk deals, and get real-time market updates.
                 </p>
               </div>
             </div>
@@ -53,7 +99,7 @@ export const CommunityGroup: React.FC<CommunityGroupProps> = ({
 
           {/* Discussion Preview Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            {GROUP_POSTS.map((post: GroupPost) => (
+            {visiblePosts.map((post: MarketFeedPost) => (
               <div
                 key={post.id}
                 onClick={() => onViewPost(post)}
@@ -120,7 +166,7 @@ export const CommunityGroup: React.FC<CommunityGroupProps> = ({
             <button
               type="button"
               onClick={onJoinDiscussion}
-              className="text-xs font-bold text-[#008080] hover:text-[#006666] inline-flex items-center gap-1"
+              className="text-xs font-bold text-[#008080] hover:text-[#006666] inline-flex items-center gap-1 cursor-pointer"
             >
               <span>Explore All 1,420 Discussions</span>
               <ArrowRight className="w-3 h-3" />

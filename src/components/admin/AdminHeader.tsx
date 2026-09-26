@@ -201,6 +201,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
       case 'manage-sellers':
         return { category: 'User & Admin Management', page: 'Manage Sellers' };
+      case 'manage-customers':
+        return { category: 'User & Admin Management', page: 'Manage Customers' };
       case 'role-permission':
         return { category: 'User & Admin Management', page: 'Role & Permission' };
       case 'admin-management':

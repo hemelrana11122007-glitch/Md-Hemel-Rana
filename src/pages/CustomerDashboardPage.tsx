@@ -51,6 +51,7 @@ type TabKey =
   | 'wishlist'
   | 'cart'
   | 'groups'
+  | 'market-feed'
   | 'notifications'
   | 'reviews'
   | 'coupons'
@@ -146,7 +147,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Order Delivered', msg: 'Your order ORD-2026-8842 has been verified and successfully delivered.', date: '2026-09-15', read: false },
     { id: 2, title: 'Seller Reply', msg: 'Craftsman Handlooms replied: "Sure! We can customize the border color for orders above 5 units."', date: '2026-09-23', read: false },
-    { id: 3, title: 'New Group Discussion', msg: 'New comment on your post in Dhaka Handloom Enthusiasts.', date: '2026-09-24', read: true },
+    { id: 3, title: 'New Market Feed Discussion', msg: 'New comment on your post in Dhaka Handloom Enthusiasts.', date: '2026-09-24', read: true },
     { id: 4, title: 'Discount Coupon Added', msg: 'Celebrate level B with 15% discount code: ARLEVEL15', date: '2026-09-24', read: false },
   ]);
 
@@ -239,7 +240,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
       ...posts,
     ]);
     setNewPostContent('');
-    onShowToast('Post shared to group feed!');
+    onShowToast('Post shared to Market Feed!');
   };
 
   const handleAddReview = (e: React.FormEvent) => {
@@ -355,7 +356,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
     { key: 'orders', label: 'My Orders', icon: ShoppingBag, count: orders.length },
     { key: 'wishlist', label: 'Wishlist', icon: Heart, count: wishlistProducts.length },
     { key: 'cart', label: 'Cart', icon: ShoppingCart, count: cart.length },
-    { key: 'groups', label: 'Group Activity', icon: Users },
+    { key: 'groups', label: 'Market Feed Activity', icon: Users },
     { key: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter((n) => !n.read).length },
     { key: 'reviews', label: 'Reviews & Ratings', icon: Star },
     { key: 'coupons', label: 'Coupons & Rewards', icon: Tag },
@@ -1064,36 +1065,36 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
             </div>
           )}
 
-          {/* 6. GROUP ACTIVITY TAB */}
-          {activeTab === 'groups' && (
+          {/* 6. MARKET FEED ACTIVITY TAB */}
+          {(activeTab === 'groups' || activeTab === 'market-feed') && (
             <div className="space-y-6">
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <Users className="w-5 h-5 text-[#008080]" />
-                <span>Group Activity & Feed</span>
+                <span>Market Feed Activity</span>
               </h2>
 
-              {/* Joined Groups */}
+              {/* Joined Groups / Feed Channels */}
               <div>
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">My Joined Groups</h3>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">My Followed Market Channels</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {joinedGroups.map((g) => (
                     <div key={g.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center text-xs">
                       <div>
                         <p className="font-bold text-slate-800">{g.name}</p>
-                        <p className="text-[10px] text-slate-500">{g.members} members joined</p>
+                        <p className="text-[10px] text-slate-500">{g.members} members participating</p>
                       </div>
                       <span className="px-2 py-0.5 bg-[#008080]/10 text-[#008080] rounded-full text-[10px] font-bold">
-                        Member
+                        Followed
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Share new post in Group */}
+              {/* Share new post in Market Feed */}
               <form onSubmit={handleAddPost} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
                 <div className="text-xs">
-                  <label className="block font-bold text-slate-700 mb-1">Select Target Group</label>
+                  <label className="block font-bold text-slate-700 mb-1">Select Market Channel</label>
                   <select
                     value={selectedGroupForPost}
                     onChange={(e) => setSelectedGroupForPost(e.target.value)}
@@ -1109,7 +1110,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                     required
                     value={newPostContent}
                     onChange={(e) => setNewPostContent(e.target.value)}
-                    placeholder="Share vendor reviews, coordinate group-buys, and ask trade advice..."
+                    placeholder="Share vendor reviews, coordinate bulk deals, and ask trade advice..."
                     rows={2}
                     className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg focus:outline-none focus:border-[#008080]"
                   />
@@ -1320,7 +1321,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
             <div className="space-y-6">
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-[#008080]" />
-                <span>Followed Sellers & Community Groups</span>
+                <span>Followed Sellers & Market Channels</span>
               </h2>
 
               <div className="space-y-3.5">

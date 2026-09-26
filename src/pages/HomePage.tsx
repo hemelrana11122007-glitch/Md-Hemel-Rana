@@ -6,8 +6,8 @@ import { BestProducts } from '../components/BestProducts';
 import { PopularBrands } from '../components/PopularBrands';
 import { ProductSegments } from '../components/ProductSegments';
 import { FeaturedSellers } from '../components/FeaturedSellers';
-import { CommunityGroup } from '../components/CommunityGroup';
-import { Product, GroupPost, Seller } from '../types/marketplace';
+import { MarketFeed } from '../components/MarketFeed';
+import { Product, MarketFeedPost, Seller } from '../types/marketplace';
 
 interface HomePageProps {
   products: Product[];
@@ -22,7 +22,7 @@ interface HomePageProps {
   onOpenCategoriesModal: () => void;
   onOpenBrandsModal: () => void;
   onJoinDiscussion: () => void;
-  onViewPost: (post: GroupPost) => void;
+  onViewPost: (post: MarketFeedPost) => void;
   onVisitSeller: (seller: Seller) => void;
 }
 
@@ -110,8 +110,8 @@ export const HomePage: React.FC<HomePageProps> = ({
         onBrowseAllSellers={() => onNavigatePage('sellers')}
       />
 
-      {/* 9. GROUP SECTION */}
-      <CommunityGroup
+      {/* 9. MARKET FEED SECTION */}
+      <MarketFeed
         onJoinDiscussion={onJoinDiscussion}
         onViewPost={onViewPost}
       />

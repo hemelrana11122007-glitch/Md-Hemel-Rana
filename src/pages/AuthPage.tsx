@@ -46,9 +46,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('880');
+  const [phoneDigits, setPhoneDigits] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [tokenInput, setTokenInput] = useState('');
 
@@ -193,17 +194,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       return;
     }
 
-    // 3. Mobile Number Validation (with country code prefix)
-    const phoneRegex = /^\+?[0-9]{8,15}$/;
-    if (!phoneRegex.test(mobileNumber)) {
-      setErrorMessage('Please enter a valid mobile number with country code (e.g. 8801700000000).');
+    // 3. Mobile Number Validation (10 digits)
+    if (!phoneDigits.trim() || phoneDigits.length !== 10) {
+      setErrorMessage('Please enter your 10-digit mobile number (e.g. 1712345678).');
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await register({ name, email, password, role: 'buyer', phone: mobileNumber });
+      const fullPhoneNumber = `+880${phoneDigits.trim()}`;
+      const res = await register({ name, email, password, role: 'buyer', phone: fullPhoneNumber });
       if (res.success && res.user) {
         onShowToast('Account registered and logged in successfully!');
         if (res.user.role === 'admin' && onNavigateAdmin) {
@@ -264,6 +265,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password);
+  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+
+  const handleMobileNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value;
+    let digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('880') && digits.length > 3) {
+      digits = digits.slice(3);
+    }
+    if (digits.length > 10) {
+      digits = digits.slice(0, 10);
+    }
+    setPhoneDigits(digits);
+  };
 
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
@@ -598,18 +613,28 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Mobile Number (with country code)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">Mobile Number</label>
+                  <span className="text-[10px] font-semibold text-slate-400">{phoneDigits.length}/10 Digits</span>
+                </div>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs font-extrabold text-[#008080] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                      BD +880
+                    </span>
+                  </div>
                   <input
                     type="tel"
                     required
-                    value={mobileNumber}
-                    onChange={(e) => setMobileNumber(e.target.value)}
-                    placeholder="880 1700000000"
-                    className="w-full pl-10 pr-3 py-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#008080] focus:bg-white"
+                    maxLength={10}
+                    value={phoneDigits}
+                    onChange={handleMobileNumberChange}
+                    placeholder="1712345678"
+                    className="w-full pl-28 pr-3 py-3 text-xs font-mono font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#008080] focus:bg-white"
                   />
                 </div>
+                <p className="text-[11px] text-slate-500 mt-1">Prefix +880 is locked. Type remaining 10 digits (e.g. 1712345678).</p>
               </div>
 
               <div>
@@ -628,6 +653,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -647,6 +673,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <span className={`flex items-center gap-1 ${hasNumber ? 'text-emerald-600 font-bold' : ''}`}>
                     <CheckCircle2 className="w-3.5 h-3.5" /> 1 Number
                   </span>
+                  <span className={`flex items-center gap-1 col-span-2 ${hasSpecialChar ? 'text-emerald-600 font-bold' : ''}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> 1 Special Character (@, #, $, %, etc.)
+                  </span>
                 </div>
               </div>
 
@@ -655,19 +684,27 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm secure password"
                     className="w-full pl-10 pr-10 py-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#008080] focus:bg-white"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !hasMinLength || !hasUppercase || !hasLowercase || !hasNumber}
+                disabled={loading || !isPasswordValid}
                 className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 text-xs font-bold text-white bg-[#008080] hover:bg-[#006666] rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
                 <span>{loading ? 'Processing...' : 'Verify & Register'}</span>

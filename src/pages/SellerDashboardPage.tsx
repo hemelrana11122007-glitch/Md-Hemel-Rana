@@ -68,6 +68,16 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
 
   const isApproved = sellerStatus === 'approved';
 
+  // Account Locked by Authority State
+  const isAccountLocked = Boolean(user?.is_locked);
+  const [isLockModalOpen, setIsLockModalOpen] = useState<boolean>(Boolean(user?.is_locked));
+
+  useEffect(() => {
+    if (user?.is_locked) {
+      setIsLockModalOpen(true);
+    }
+  }, [user?.is_locked]);
+
   // Active Tab State (Default to 'kyc' if locked, or 'dashboard' if approved)
   const [activeTab, setActiveTab] = useState<string>(
     isApproved ? 'dashboard' : 'kyc'
@@ -310,6 +320,11 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
 
   // Handle Tab Navigation with Lock Enforcement
   const handleTabClick = (tabKey: string, isLocked: boolean) => {
+    if (isAccountLocked) {
+      onShowToast('Your seller profile is locked by the AR Market BD authority.');
+      setIsLockModalOpen(true);
+      return;
+    }
     if (isLocked) {
       onShowToast('Please complete your KYC verification to access this feature.');
       // Keep view on KYC verification or current tab
@@ -453,10 +468,10 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
       locked: !isApproved,
     },
     {
-      key: 'groups',
-      label: 'Group Management',
+      key: 'market-feed',
+      label: 'Market Feed Management',
       icon: Users,
-      subItems: ['Create Group', 'My Groups', 'Group Posts'],
+      subItems: ['Create Market Post', 'Market Channels', 'Feed Posts'],
       locked: !isApproved,
     },
     {
@@ -491,7 +506,7 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
       key: 'notifications_tab',
       label: 'Notifications',
       icon: Bell,
-      subItems: ['New Orders', 'New Comments', 'Group Activity'],
+      subItems: ['New Orders', 'New Comments', 'Market Feed Activity'],
       locked: !isApproved,
     },
     {
@@ -567,6 +582,46 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
                 className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
                 Logout Seller Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Seller Profile Locked Popup Modal */}
+      {isAccountLocked && isLockModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/85 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-rose-200 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center mx-auto shadow-2xs">
+              <Lock className="w-8 h-8 text-rose-600" />
+            </div>
+            <div>
+              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 uppercase tracking-widest">
+                Authority Restricted
+              </span>
+              <h3 className="text-xl font-black text-slate-900 mt-2 font-display">
+                Seller Profile Locked
+              </h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Your seller profile is currently locked by the AR Market BD authority. You cannot access seller features until your profile is unlocked. Please contact support or wait for the review to be completed.
+            </p>
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onShowToast('Support email: support@armarketbd.com | Helpline: +880 1711-000000');
+                }}
+                className="flex-1 py-3 bg-[#008080] hover:bg-[#006666] text-white text-xs font-extrabold rounded-xl shadow-md transition-colors cursor-pointer"
+              >
+                Contact Support
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsLockModalOpen(false)}
+                className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>
@@ -754,27 +809,36 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
                     </div>
 
                     <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setIsProfileDropdownOpen(false);
-                          setActiveTab('my_profile');
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-[#008080]/5 hover:text-[#008080] flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <User className="w-4 h-4 text-[#008080]" />
-                        <span>My Profile</span>
-                      </button>
+                      {isAccountLocked ? (
+                        <div className="px-4 py-2.5 text-xs font-bold text-rose-600 bg-rose-50/70 border-b border-rose-100 flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Features Locked by Authority</span>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setIsProfileDropdownOpen(false);
+                              setActiveTab('my_profile');
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-[#008080]/5 hover:text-[#008080] flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <User className="w-4 h-4 text-[#008080]" />
+                            <span>My Profile</span>
+                          </button>
 
-                      <button
-                        onClick={() => {
-                          setIsProfileDropdownOpen(false);
-                          onNavigateHome();
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-[#008080]/5 hover:text-[#008080] flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <ShoppingBag className="w-4 h-4 text-[#008080]" />
-                        <span>Visit Marketplace Storefront</span>
-                      </button>
+                          <button
+                            onClick={() => {
+                              setIsProfileDropdownOpen(false);
+                              onNavigateHome();
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-[#008080]/5 hover:text-[#008080] flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <ShoppingBag className="w-4 h-4 text-[#008080]" />
+                            <span>Visit Marketplace Storefront</span>
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     <div className="pt-1 border-t border-slate-100">
@@ -1036,6 +1100,39 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
         {/* ================= MAIN DYNAMIC CONTENT AREA ================= */}
         <main className="flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 lg:p-8 shadow-xs overflow-y-auto h-full scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
           
+          {/* Seller Profile Locked Alert Banner */}
+          {isAccountLocked && (
+            <div className="mb-6 p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-rose-100 text-rose-600 shrink-0">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm">Seller Profile Locked</h4>
+                  <p className="text-xs text-rose-700 mt-0.5">
+                    Your seller profile is currently locked by the AR Market BD authority. You cannot access seller features until your profile is unlocked. Please contact support or wait for the review to be completed.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsLockModalOpen(true)}
+                  className="px-3.5 py-1.5 text-xs font-bold bg-white hover:bg-rose-100/50 text-rose-700 border border-rose-300 rounded-xl cursor-pointer"
+                >
+                  View Details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onShowToast('Support email: support@armarketbd.com | Helpline: +880 1711-000000')}
+                  className="px-3.5 py-1.5 text-xs font-extrabold bg-[#008080] hover:bg-[#006666] text-white rounded-xl shadow-xs cursor-pointer"
+                >
+                  Contact Support
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 11. KYC Verification View (ALWAYS ACCESSIBLE) */}
           {activeTab === 'kyc' && (
             <div className="space-y-8">

@@ -196,6 +196,125 @@ adminRouter.patch('/sellers/:id/transfer-role', (req: Request, res: Response): v
 });
 
 /**
+ * PATCH /api/admin/sellers/:id/lock
+ * Locks or unlocks a seller account
+ */
+adminRouter.patch('/sellers/:id/lock', (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    const { is_locked, reason } = req.body;
+
+    const seller = db.findUserById(id);
+    if (!seller || seller.role !== 'seller') {
+      res.status(404).json({ error: 'Seller not found.' });
+      return;
+    }
+
+    const locked = Boolean(is_locked);
+    const updated = db.lockSellerAccount(id, locked, reason);
+
+    if (locked) {
+      db.addUserNotification(
+        id,
+        'Your seller profile has been locked by the AR Market BD authority. Access to seller features has been restricted.',
+        'error'
+      );
+    } else {
+      db.addUserNotification(
+        id,
+        'Your seller profile has been unlocked by the AR Market BD authority. Full access has been restored.',
+        'success'
+      );
+    }
+
+    res.json({
+      success: true,
+      message: `Seller profile ${locked ? 'locked' : 'unlocked'} successfully.`,
+      is_locked: locked,
+      seller: updated,
+    });
+  } catch (error) {
+    console.error('Error updating seller lock status:', error);
+    res.status(500).json({ error: 'Failed to update seller lock status.' });
+  }
+});
+
+/**
+ * PUT /api/admin/sellers/:id
+ * Updates full seller profile by Admin
+ */
+adminRouter.put('/sellers/:id', (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    const { name, store_name, email, phone, address, business_type, shop_id, bio, seller_status, present_address, permanent_address } = req.body;
+
+    const seller = db.findUserById(id);
+    if (!seller || seller.role !== 'seller') {
+      res.status(404).json({ error: 'Seller not found.' });
+      return;
+    }
+
+    const updated = db.updateSellerAdmin(id, {
+      name,
+      store_name,
+      email,
+      phone,
+      address,
+      business_type,
+      shop_id,
+      bio,
+      seller_status,
+      present_address,
+      permanent_address,
+    });
+
+    db.addUserNotification(
+      id,
+      'Your seller profile details have been updated by the platform administrator.',
+      'info'
+    );
+
+    res.json({
+      success: true,
+      message: 'Seller profile updated successfully!',
+      seller: updated,
+    });
+  } catch (error) {
+    console.error('Error updating seller profile:', error);
+    res.status(500).json({ error: 'Failed to update seller profile.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/sellers/:id
+ * Permanently deletes a seller account
+ */
+adminRouter.delete('/sellers/:id', (req: Request, res: Response): void => {
+  try {
+    const { id } = req.params;
+    const seller = db.findUserById(id);
+    if (!seller || seller.role !== 'seller') {
+      res.status(404).json({ error: 'Seller not found.' });
+      return;
+    }
+
+    const deleted = db.deleteSellerAccount(id);
+    if (!deleted) {
+      res.status(404).json({ error: 'Failed to delete seller.' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: `Seller account "${seller.store_name || seller.name}" deleted permanently. The user can register again with the same credentials if needed.`,
+    });
+  } catch (error) {
+    console.error('Error deleting seller:', error);
+    res.status(500).json({ error: 'Failed to delete seller account.' });
+  }
+});
+
+/**
  * GET /api/admin/orders
  * Returns all marketplace orders for super admin inspection
  */
@@ -390,13 +509,17 @@ adminRouter.get('/notifications', (req: Request, res: Response): void => {
  */
 adminRouter.patch('/notifications/mark-read', (req: Request, res: Response): void => {
   try {
-    const { notificationId } = req.body;
+    const { notificationId, targetView } = req.body;
     const adminUser = db.findUserById(req.user!.id);
     if (adminUser) {
       const notifs = adminUser.notifications || [];
       if (notificationId) {
         adminUser.notifications = notifs.map((n: any) =>
           n.id === notificationId ? { ...n, unread: false, read: true } : n
+        );
+      } else if (targetView) {
+        adminUser.notifications = notifs.map((n: any) =>
+          n.targetView === targetView ? { ...n, unread: false, read: true } : n
         );
       } else {
         adminUser.notifications = notifs.map((n: any) => ({

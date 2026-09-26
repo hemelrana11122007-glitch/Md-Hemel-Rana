@@ -8,6 +8,7 @@ import { authRouter } from './server/routes/authRoutes';
 import { adminRouter } from './server/routes/adminRoutes';
 import { sellerRouter } from './server/routes/sellerRoutes';
 import { userRouter } from './server/routes/userRoutes';
+import { db } from './server/db';
 import { PORT } from './server/config';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -61,6 +62,31 @@ async function startServer() {
   app.use('/api/admin', adminRouter);
   app.use('/api/seller', sellerRouter);
   app.use('/api/user', userRouter);
+
+  // Public endpoint for market feed seller statuses (For real-time auto-hide/restore of posts)
+  app.get('/api/market-feed/sellers-status', (_req, res) => {
+    try {
+      const sellers = db.getAllSellers();
+      const statusMap: Record<string, { status: string; is_locked: boolean; name: string }> = {};
+      for (const s of sellers) {
+        statusMap[s.id] = {
+          status: s.seller_status || 'pending',
+          is_locked: Boolean(s.is_locked),
+          name: s.name,
+        };
+        if (s.name) {
+          statusMap[s.name.toLowerCase()] = {
+            status: s.seller_status || 'pending',
+            is_locked: Boolean(s.is_locked),
+            name: s.name,
+          };
+        }
+      }
+      res.json({ success: true, statusMap });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to retrieve seller status map' });
+    }
+  });
 
   // Health check endpoint
   app.get('/api/health', (_req, res) => {
