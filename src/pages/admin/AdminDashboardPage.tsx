@@ -13,6 +13,9 @@ import { ActivityLogsView } from '../../components/admin/views/ActivityLogsView'
 import { PaymentTaxView } from '../../components/admin/views/PaymentTaxView';
 import { AnalyticsReportsView } from '../../components/admin/views/AnalyticsReportsView';
 import { ManageProductsView } from '../../components/admin/views/ManageProductsView';
+import { DeliverySettingsView } from '../../components/admin/views/DeliverySettingsView';
+import { ManageCourierView } from '../../components/admin/views/ManageCourierView';
+import { CategoryManagementView } from '../../components/admin/views/CategoryManagementView';
 import { GeneralModuleView } from '../../components/admin/views/GeneralModuleView';
 import { useAuth } from '../../context/AuthContext';
 import { adminApi } from '../../services/adminApi';
@@ -30,7 +33,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 }) => {
   const { logout, setIsMailboxOpen } = useAuth();
 
-  const [activeView, setActiveView] = useState<AdminViewKey>('overview');
+  const [activeView, setActiveView] = useState<AdminViewKey>(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/admin/category')) {
+      return 'category';
+    }
+    return 'overview';
+  });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isProfileSecurityOpen, setIsProfileSecurityOpen] = useState(false);
 
@@ -190,6 +198,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <ManageProductsView onShowToast={onShowToast} />
               )}
 
+              {activeView === 'delivery-settings' && (
+                <DeliverySettingsView onShowToast={onShowToast} />
+              )}
+
+              {activeView === 'manage-courier' && (
+                <ManageCourierView onShowToast={onShowToast} />
+              )}
+
+              {activeView === 'category' && (
+                <CategoryManagementView onShowToast={onShowToast} />
+              )}
+
               {/* All other modules handled smoothly with specialized controls */}
               {![
                 'overview',
@@ -200,6 +220,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 'manage-customers',
                 'order-management',
                 'manage-product',
+                'delivery-settings',
+                'manage-courier',
+                'category',
                 'website-seo',
                 'seo-general-identity',
                 'seo-xml-sitemap',

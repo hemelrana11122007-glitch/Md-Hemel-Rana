@@ -180,6 +180,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         return { category: 'Marketplace & E-commerce', page: 'Commission Settings' };
       case 'delivery-settings':
         return { category: 'Marketplace & E-commerce', page: 'Delivery Settings' };
+      case 'manage-courier':
+        return { category: 'Marketplace & E-commerce', page: 'Manage Courier' };
       case 'confirmation-calls':
         return { category: 'Marketplace & E-commerce', page: 'Confirmation Calls' };
       case 'category':

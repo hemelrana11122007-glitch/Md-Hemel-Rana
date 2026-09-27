@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Product, CartItem } from '../types/marketplace';
+import { CheckoutModal } from '../components/CheckoutModal';
 
 interface CustomerDashboardPageProps {
   onNavigateHome: () => void;
@@ -78,6 +79,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   const [customerId, setCustomerId] = useState<string>(user?.customer_id || 'CUST-10001');
 
   // Sync with auth user updates
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   React.useEffect(() => {
     if (user?.customer_id) {
       setCustomerId(user.customer_id);
@@ -307,25 +309,11 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   };
 
   const handleCheckoutSimulate = () => {
-    const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    const discountAmt = (subtotal * appliedDiscount) / 100;
-    const finalTotal = subtotal - discountAmt;
-    
-    const newOrd = {
-      id: `ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      date: new Date().toISOString().split('T')[0],
-      total: finalTotal,
-      status: 'pending' as const,
-      paymentMethod: paymentMethods[0]?.type || 'Cash on Delivery',
-      items: cart.map(i => ({ name: i.product.title, qty: i.quantity, price: i.product.price })),
-    };
-
-    setOrders([newOrd, ...orders]);
-    setOrderCount(prev => prev + 1);
-    onShowToast('Escrow order generated! Pending vendor verification.');
-    
-    // Clear cart via simulating removes
-    cart.forEach(item => onRemoveFromCart(item.product.id));
+    if (cart.length === 0) {
+      onShowToast('Your cart is empty.');
+      return;
+    }
+    setIsCheckoutOpen(true);
   };
 
   const handleFileMock = (type: 'profile' | 'cover') => {
@@ -1785,6 +1773,29 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Checkout Modal with District & Weight-based Delivery Calculation */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cart={cart}
+        onClearCart={() => {
+          cart.forEach((item) => onRemoveFromCart(item.product.id));
+        }}
+        onShowToast={onShowToast}
+        onOrderPlaced={(order) => {
+          const newOrd = {
+            id: order.id,
+            date: new Date().toISOString().split('T')[0],
+            total: order.grand_total,
+            status: 'pending' as const,
+            paymentMethod: order.payment_method,
+            items: order.items.map((i: any) => ({ name: i.title, qty: i.quantity, price: i.price })),
+          };
+          setOrders((prev) => [newOrd, ...prev]);
+          setOrderCount((prev) => prev + 1);
+        }}
+      />
     </div>
   );
 };

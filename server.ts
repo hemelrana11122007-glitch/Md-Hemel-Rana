@@ -8,6 +8,7 @@ import { authRouter } from './server/routes/authRoutes';
 import { adminRouter } from './server/routes/adminRoutes';
 import { sellerRouter } from './server/routes/sellerRoutes';
 import { userRouter } from './server/routes/userRoutes';
+import { uploadRouter } from './server/routes/uploadRoutes';
 import { db } from './server/db';
 import { PORT } from './server/config';
 
@@ -54,14 +55,34 @@ async function startServer() {
   app.use(cookieParser());
 
   // JSON request body parser
-  app.use(express.json({ limit: '1mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // Static directory for uploaded files (Zero local-storage blob vulnerabilities, server-hosted assets)
+  const uploadsDir = path.resolve(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  const catUploadsDir = path.resolve(uploadsDir, 'categories');
+  if (!fs.existsSync(catUploadsDir)) {
+    fs.mkdirSync(catUploadsDir, { recursive: true });
+  }
+  app.use(
+    '/uploads',
+    express.static(uploadsDir, {
+      setHeaders: (res) => {
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      },
+    })
+  );
 
   // Mount Custom Authentication & Protected RBAC API Routes
   app.use('/api/auth', authRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/seller', sellerRouter);
   app.use('/api/user', userRouter);
+  app.use('/api/upload', uploadRouter);
 
   // Public endpoint for market feed seller statuses (For real-time auto-hide/restore of posts)
   app.get('/api/market-feed/sellers-status', (_req, res) => {

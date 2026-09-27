@@ -28,6 +28,7 @@ import { JoinDiscussionModal } from './components/JoinDiscussionModal';
 import { AuthModal } from './components/AuthModal';
 import { DevMailboxModal } from './components/DevMailboxModal';
 import { TaxonomyModal } from './components/TaxonomyModal';
+import { CheckoutModal } from './components/CheckoutModal';
 import { useAuth } from './context/AuthContext';
 
 // Data & Types
@@ -82,6 +83,7 @@ export default function App() {
 
   // Modals Visibility
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'register' | 'forgot' | 'reset' | 'verify'>('signin');
@@ -546,8 +548,16 @@ export default function App() {
         onRemoveItem={handleRemoveFromCart}
         onCheckout={() => {
           setIsCartOpen(false);
-          showToast('Checkout simulated! Escrow order protection initiated.');
+          setIsCheckoutOpen(true);
         }}
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cart={cart}
+        onClearCart={() => setCart([])}
+        onShowToast={showToast}
       />
 
       <WishlistDrawer

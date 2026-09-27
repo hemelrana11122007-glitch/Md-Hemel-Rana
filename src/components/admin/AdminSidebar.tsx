@@ -11,6 +11,7 @@ import {
   BadgeCheck,
   Percent,
   Truck,
+  Send,
   PhoneCall,
   FolderTree,
   Tag,
@@ -65,6 +66,7 @@ export type AdminViewKey =
   | 'seller-verification'
   | 'commission-settings'
   | 'delivery-settings'
+  | 'manage-courier'
   | 'confirmation-calls'
   | 'category'
   | 'brand'
@@ -173,6 +175,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         },
         { key: 'commission-settings', label: 'Commission Settings', icon: Percent },
         { key: 'delivery-settings', label: 'Delivery Settings', icon: Truck },
+        { key: 'manage-courier', label: 'Manage Courier', icon: Send },
         { key: 'confirmation-calls', label: 'Confirmation Calls', icon: PhoneCall },
         { key: 'category', label: 'Category', icon: FolderTree },
         { key: 'brand', label: 'Brand', icon: Tag },

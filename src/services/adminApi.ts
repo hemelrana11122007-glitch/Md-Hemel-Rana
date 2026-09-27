@@ -76,14 +76,44 @@ export interface CustomerRecord {
   created_at: string;
 }
 
+export interface CourierDispatchRecord {
+  provider: 'steadfast' | 'pathao' | 'paperfly';
+  tracking_id: string;
+  consignment_id?: string;
+  dispatched_at: string;
+  courier_status: 'pending' | 'in_transit' | 'delivered' | 'cancelled' | 'failed';
+  pickup_requested: boolean;
+  raw_payload?: any;
+  last_sync_at?: string;
+}
+
 export interface OrderRecord {
   id: string;
   buyer_id: string;
   buyer_name: string;
   buyer_customer_id?: string;
+  buyer_phone?: string;
+  buyer_address?: string;
+  buyer_district?: string;
   items: OrderItem[];
   total_amount: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
+  cod_amount?: number;
+  total_weight_kg?: number;
+  order_segment?: 'retail' | 'wholesale' | 'import';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'processing'
+    | 'packing'
+    | 'import_processing'
+    | 'awaiting_bangladesh_shipment'
+    | 'ready_for_shipment'
+    | 'ready_for_bangladesh_delivery'
+    | 'shipped'
+    | 'delivered'
+    | 'completed'
+    | 'cancelled';
+  courier_dispatch?: CourierDispatchRecord;
   created_at: string;
   updated_at: string;
 }

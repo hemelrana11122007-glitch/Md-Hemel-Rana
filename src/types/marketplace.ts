@@ -23,6 +23,8 @@ export interface Product {
   isTrending?: boolean;
   isBestProduct?: boolean;
   description: string;
+  weight_kg?: number;
+  bd_import_cost?: number;
 }
 
 export interface Seller {
