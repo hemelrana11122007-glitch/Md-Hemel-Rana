@@ -178,7 +178,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         { key: 'manage-courier', label: 'Manage Courier', icon: Send },
         { key: 'confirmation-calls', label: 'Confirmation Calls', icon: PhoneCall },
         { key: 'category', label: 'Category', icon: FolderTree },
-        { key: 'brand', label: 'Brand', icon: Tag },
+        { key: 'brand', label: 'Brand Settings', icon: Tag },
         { key: 'coupon', label: 'Coupon', icon: TicketPercent },
         { key: 'advertisement', label: 'Advertisement', icon: Megaphone },
         { key: 'subscription-settings', label: 'Subscription Settings', icon: Sparkles },

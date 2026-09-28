@@ -26,6 +26,9 @@ import {
   Scale,
 } from 'lucide-react';
 import { adminApi } from '../../../services/adminApi';
+import { categoryService } from '../../../services/categoryService';
+import { CategorySelectDropdown } from '../CategorySelectDropdown';
+import { BrandSelectDropdown } from '../BrandSelectDropdown';
 
 interface ManageProductsViewProps {
   onShowToast: (msg: string) => void;
@@ -69,6 +72,7 @@ export const ManageProductsView: React.FC<ManageProductsViewProps> = ({ onShowTo
   const [searchQuery, setSearchQuery] = useState('');
   const [vendorFilter, setVendorFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -125,6 +129,8 @@ export const ManageProductsView: React.FC<ManageProductsViewProps> = ({ onShowTo
       if (sellerRes.success && sellerRes.sellers) {
         setSellers(sellerRes.sellers);
       }
+      const cats = categoryService.getCategories().map((c) => c.name);
+      setAvailableCategories(cats);
     } catch {
       onShowToast('Error loading products list');
     } finally {
@@ -479,11 +485,11 @@ export const ManageProductsView: React.FC<ManageProductsViewProps> = ({ onShowTo
               className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer"
             >
               <option value="all">All Categories</option>
-              <option value="electronics">Electronics</option>
-              <option value="fashion">Fashion & Apparel</option>
-              <option value="ceramics">Ceramics & Home</option>
-              <option value="kitchenware">Kitchenware</option>
-              <option value="industrial">Industrial Wholesale</option>
+              {availableCategories.map((cName) => (
+                <option key={cName} value={cName.toLowerCase()}>
+                  {cName}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -791,29 +797,20 @@ export const ManageProductsView: React.FC<ManageProductsViewProps> = ({ onShowTo
                     <label className="block font-bold text-slate-700 mb-1">
                       Category <span className="text-rose-500">*</span>
                     </label>
-                    <select
+                    <CategorySelectDropdown
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800"
-                    >
-                      <option value="Electronics">Electronics & Gadgets</option>
-                      <option value="Fashion">Fashion & Apparel</option>
-                      <option value="Ceramics">Ceramics & Handcrafts</option>
-                      <option value="Kitchenware">Kitchenware & Home</option>
-                      <option value="Industrial">Industrial Wholesale</option>
-                      <option value="Beauty">Beauty & Personal Care</option>
-                    </select>
+                      onChange={(catName) => setCategory(catName)}
+                      required
+                    />
                   </div>
 
                   {/* Brand */}
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Brand Name</label>
-                    <input
-                      type="text"
+                    <BrandSelectDropdown
                       value={brand}
-                      onChange={(e) => setBrand(e.target.value)}
-                      placeholder="e.g. AR Craft / Apex"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-semibold text-slate-800"
+                      onChange={(bName) => setBrand(bName)}
+                      placeholder="Select brand with logo or enter custom..."
                     />
                   </div>
 

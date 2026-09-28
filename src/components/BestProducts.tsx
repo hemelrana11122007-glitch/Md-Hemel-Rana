@@ -31,8 +31,8 @@ export const BestProducts: React.FC<BestProductsProps> = ({
   };
 
   return (
-    <section id="best-products" className="py-14 bg-white border-b border-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="best-products" className="py-8 sm:py-10 bg-white border-b border-slate-100">
+      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-[#008080] text-xs font-bold uppercase tracking-wider mb-2">

@@ -16,6 +16,8 @@ import { ManageProductsView } from '../../components/admin/views/ManageProductsV
 import { DeliverySettingsView } from '../../components/admin/views/DeliverySettingsView';
 import { ManageCourierView } from '../../components/admin/views/ManageCourierView';
 import { CategoryManagementView } from '../../components/admin/views/CategoryManagementView';
+import { BrandManagementView } from '../../components/admin/views/BrandManagementView';
+import { CommissionSettingsView } from '../../components/admin/views/CommissionSettingsView';
 import { GeneralModuleView } from '../../components/admin/views/GeneralModuleView';
 import { useAuth } from '../../context/AuthContext';
 import { adminApi } from '../../services/adminApi';
@@ -34,8 +36,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const { logout, setIsMailboxOpen } = useAuth();
 
   const [activeView, setActiveView] = useState<AdminViewKey>(() => {
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/admin/category')) {
-      return 'category';
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p.includes('/admin/category')) return 'category';
+      if (p.includes('/admin/brand')) return 'brand';
+      if (p.includes('/admin/commission')) return 'commission-settings';
     }
     return 'overview';
   });
@@ -89,6 +94,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
   const handleSelectView = (view: AdminViewKey) => {
     setActiveView(view);
+    if (view === 'brand') {
+      try {
+        window.history.pushState({}, '', '/admin/brands');
+      } catch (_) {}
+    } else if (view === 'category') {
+      try {
+        window.history.pushState({}, '', '/admin/category');
+      } catch (_) {}
+    } else if (view === 'commission-settings') {
+      try {
+        window.history.pushState({}, '', '/admin/commission');
+      } catch (_) {}
+    }
+
     if (view === 'manage-sellers') {
       adminApi.markNotificationsRead(undefined, 'manage-sellers');
       setNewSellersCount(0);
@@ -210,6 +229,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <CategoryManagementView onShowToast={onShowToast} />
               )}
 
+              {activeView === 'brand' && (
+                <BrandManagementView onShowToast={onShowToast} />
+              )}
+
+              {activeView === 'commission-settings' && (
+                <CommissionSettingsView onShowToast={onShowToast} />
+              )}
+
               {/* All other modules handled smoothly with specialized controls */}
               {![
                 'overview',
@@ -223,6 +250,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 'delivery-settings',
                 'manage-courier',
                 'category',
+                'brand',
+                'commission-settings',
                 'website-seo',
                 'seo-general-identity',
                 'seo-xml-sitemap',

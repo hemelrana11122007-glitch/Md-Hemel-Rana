@@ -9,12 +9,16 @@ export const uploadRouter = Router();
 // Ensure upload directories exist
 const uploadsBaseDir = path.resolve(process.cwd(), 'uploads');
 const categoriesUploadDir = path.resolve(uploadsBaseDir, 'categories');
+const brandsUploadDir = path.resolve(uploadsBaseDir, 'brands');
 
 if (!fs.existsSync(uploadsBaseDir)) {
   fs.mkdirSync(uploadsBaseDir, { recursive: true });
 }
 if (!fs.existsSync(categoriesUploadDir)) {
   fs.mkdirSync(categoriesUploadDir, { recursive: true });
+}
+if (!fs.existsSync(brandsUploadDir)) {
+  fs.mkdirSync(brandsUploadDir, { recursive: true });
 }
 
 // Allowed MIME types and extensions
@@ -225,6 +229,134 @@ uploadRouter.post(
       res.status(500).json({
         success: false,
         error: 'Internal server error while saving uploaded asset. Please try again.',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/upload/brand-asset
+ * Strictly validates and saves Brand Logo / Brand Banner to secure server storage
+ * Zero localstorage blobs, cryptographic filenames, magic bytes & anti-XSS check
+ */
+uploadRouter.post(
+  '/brand-asset',
+  (req: Request, res: Response, next: NextFunction) => {
+    upload.single('file')(req, res, (err: any) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({
+            success: false,
+            error: 'File size exceeds maximum allowed server limit of 6MB.',
+          });
+          return;
+        }
+        if (err.message === 'INVALID_MIME_TYPE') {
+          res.status(400).json({
+            success: false,
+            error: 'Invalid file format. Only PNG, JPG, JPEG, WEBP, and SVG formats are permitted.',
+          });
+          return;
+        }
+        res.status(400).json({
+          success: false,
+          error: err.message || 'File upload parsing failed.',
+        });
+        return;
+      }
+      next();
+    });
+  },
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const file = req.file;
+      if (!file) {
+        res.status(400).json({
+          success: false,
+          error: 'No file was provided in the upload request.',
+        });
+        return;
+      }
+
+      const rawType = (req.body.assetType || 'logo').toString().toLowerCase();
+      const assetType: 'logo' | 'banner' = rawType === 'banner' ? 'banner' : 'logo';
+
+      // 1. Strict MIME type validation
+      const mimetype = file.mimetype.toLowerCase();
+      if (!ALLOWED_MIME_TYPES.has(mimetype)) {
+        res.status(400).json({
+          success: false,
+          error: `MIME type "${mimetype}" is not permitted. Allowed types: PNG, JPG, JPEG, WEBP, SVG.`,
+        });
+        return;
+      }
+
+      // 2. Strict Size Limits per asset type:
+      // Brand Logo: max 2MB (2 * 1024 * 1024)
+      // Brand Banner: max 5MB (5 * 1024 * 1024)
+      const maxLogoBytes = 2 * 1024 * 1024;
+      const maxBannerBytes = 5 * 1024 * 1024;
+
+      if (assetType === 'logo') {
+        if (file.size > maxLogoBytes) {
+          const selectedMb = (file.size / (1024 * 1024)).toFixed(2);
+          res.status(400).json({
+            success: false,
+            error: `Brand Logo exceeds the 2MB size limit (Selected size: ${selectedMb} MB). Please choose a smaller image.`,
+          });
+          return;
+        }
+      } else if (assetType === 'banner') {
+        if (file.size > maxBannerBytes) {
+          const selectedMb = (file.size / (1024 * 1024)).toFixed(2);
+          res.status(400).json({
+            success: false,
+            error: `Brand Banner exceeds the 5MB size limit (Selected size: ${selectedMb} MB). Please choose a smaller image.`,
+          });
+          return;
+        }
+      }
+
+      // 3. Magic Bytes & Anti-XSS Content Inspection
+      const isSignatureValid = validateBufferMagicBytes(file.buffer, mimetype);
+      if (!isSignatureValid) {
+        res.status(400).json({
+          success: false,
+          error: 'File signature verification failed or dangerous content detected in the image payload.',
+        });
+        return;
+      }
+
+      // 4. Safe Filename Generation (Zero path traversal, unique cryptographic hash)
+      const ext = EXTENSION_MAP[mimetype] || path.extname(file.originalname).toLowerCase() || '.png';
+      const safePrefix = assetType === 'banner' ? 'brand-banner' : 'brand-logo';
+      const randomToken = crypto.randomBytes(8).toString('hex');
+      const safeFilename = `${safePrefix}-${Date.now()}-${randomToken}${ext}`;
+
+      const targetPath = path.join(brandsUploadDir, safeFilename);
+
+      // Write file securely to disk
+      await fs.promises.writeFile(targetPath, file.buffer);
+
+      // Generate hosted static URL
+      const hostedUrl = `/uploads/brands/${safeFilename}`;
+
+      res.json({
+        success: true,
+        url: hostedUrl,
+        filename: safeFilename,
+        originalName: path.basename(file.originalname),
+        size: file.size,
+        mimeType: mimetype,
+        assetType,
+        storage: 'server_secure_storage',
+        uploadedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error('[UploadRouter] Brand asset upload failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error while saving uploaded brand asset. Please try again.',
       });
     }
   }

@@ -805,3 +805,49 @@ ${pTitle} হল ${pBrand}-এর একটি প্রিমিয়াম ম�
     res.status(500).json({ error: 'Failed to generate AI Meta data.' });
   }
 });
+
+/**
+ * GET /api/admin/commission-settings
+ * Restricted to Super Admin & Employees with Super Admin Access
+ */
+adminRouter.get('/commission-settings', (req: Request, res: Response): void => {
+  try {
+    const user = req.user;
+    if (user && user.role !== 'admin') {
+      res.status(403).json({ error: 'Access Denied: Only Super Admin & Authorized Employees can access Commission Settings.' });
+      return;
+    }
+    const settings = db.getCommissionSettings();
+    res.json({
+      success: true,
+      settings,
+    });
+  } catch (error) {
+    console.error('Error fetching commission settings:', error);
+    res.status(500).json({ error: 'Failed to retrieve commission settings.' });
+  }
+});
+
+/**
+ * POST /api/admin/commission-settings
+ * Update commission settings
+ */
+adminRouter.post('/commission-settings', (req: Request, res: Response): void => {
+  try {
+    const user = req.user;
+    if (user && user.role !== 'admin') {
+      res.status(403).json({ error: 'Access Denied: Only Super Admin & Authorized Employees can modify Commission Settings.' });
+      return;
+    }
+    const updated = db.updateCommissionSettings(req.body);
+    res.json({
+      success: true,
+      settings: updated,
+      message: 'Commission settings updated successfully.',
+    });
+  } catch (error) {
+    console.error('Error updating commission settings:', error);
+    res.status(500).json({ error: 'Failed to update commission settings.' });
+  }
+});
+

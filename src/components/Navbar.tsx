@@ -69,8 +69,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full bg-white shadow-[0_2px_12px_rgba(0,128,128,0.06)] border-b border-slate-100">
       {/* Top Banner Bar for Trust / Multi-Vendor highlight */}
-      <div className="bg-[#008080] text-white text-[12px] py-1.5 px-4 hidden md:block">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="bg-[#008080] text-white text-[12px] py-1.5 px-3 sm:px-5 lg:px-6 hidden md:block">
+        <div className="max-w-[1536px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1.5">
               <Truck className="w-3.5 h-3.5" />
@@ -105,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Main Navbar Row */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6 py-3.5">
         <div className="flex items-center justify-between gap-4 lg:gap-8">
           {/* Logo on Left: AR Market BD */}
           <div className="flex items-center gap-3">
@@ -317,10 +317,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Navigation Menu Below Main Row */}
-      <nav className="border-t border-slate-100 bg-[#F8FAFA]/95 backdrop-blur-xs hidden md:block">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="bg-gradient-to-r from-[#042f24] via-[#064e3b] to-[#0f766e] shadow-md hidden md:block border-t border-teal-600/30">
+        <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1 lg:space-x-1.5 py-1.5">
+            <div className="flex items-center space-x-1 lg:space-x-1.5 py-2">
               {navLinks.map((link) => {
                 const isActive = activePage === link.id;
                 return (
@@ -330,17 +330,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => {
                       onNavigatePage(link.id, link.path);
                     }}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                       link.isSpecial
-                        ? 'text-teal-950 bg-teal-100/90 hover:bg-teal-200 border border-teal-300/80 shadow-2xs'
+                        ? 'text-white bg-teal-500/30 hover:bg-teal-500/50 border border-teal-400/50 shadow-2xs'
                         : isActive
-                        ? 'text-white bg-[#008080] font-bold shadow-xs'
-                        : 'text-slate-700 hover:text-[#008080] hover:bg-teal-50/60'
+                        ? 'text-[#0f766e] bg-white font-black shadow-md'
+                        : 'text-emerald-100 hover:text-white hover:bg-white/15 border border-transparent'
                     }`}
                   >
-                    {link.isSpecial && <Users2 className="w-3.5 h-3.5 text-[#008080]" />}
+                    {link.isSpecial && <Users2 className="w-3.5 h-3.5 text-teal-200" />}
                     {link.dotColor && !isActive && (
-                      <span className={`w-1.5 h-1.5 rounded-full ${link.dotColor} inline-block`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${link.dotColor === 'bg-teal-500' ? 'bg-teal-300' : link.dotColor} inline-block`} />
                     )}
                     <span>{link.label}</span>
                   </button>
@@ -349,9 +349,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Quick Segment Highlights */}
-            <div className="hidden lg:flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1 text-[#008080] font-medium">
-                <Sparkles className="w-3.5 h-3.5 text-[#008080]" />
+            <div className="hidden lg:flex items-center gap-3 text-xs text-emerald-100 font-semibold">
+              <span className="flex items-center gap-1 text-emerald-200">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
                 Direct Verified Vendors
               </span>
             </div>

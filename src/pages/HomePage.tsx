@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HeroSlider } from '../components/HeroSlider';
 import { PopularCategories } from '../components/PopularCategories';
+import { SpecialOfferSection } from '../components/SpecialOfferSection';
 import { TrendingProducts } from '../components/TrendingProducts';
 import { BestProducts } from '../components/BestProducts';
 import { PopularBrands } from '../components/PopularBrands';
 import { ProductSegments } from '../components/ProductSegments';
 import { FeaturedSellers } from '../components/FeaturedSellers';
 import { MarketFeed } from '../components/MarketFeed';
+import { SobaiAIDrawer } from '../components/SobaiAIDrawer';
 import { Product, MarketFeedPost, Seller } from '../types/marketplace';
 
 interface HomePageProps {
@@ -42,22 +44,37 @@ export const HomePage: React.FC<HomePageProps> = ({
   onViewPost,
   onVisitSeller,
 }) => {
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+
   return (
     <div>
-      {/* 2. HERO SECTION */}
+      {/* 1. HERO SECTION & 5-COLUMN TRUST BADGES */}
       <HeroSlider
         onShopNow={() => onNavigatePage('shop')}
         onExploreWholesale={() => onNavigatePage('wholesale')}
         onExploreImports={() => onNavigatePage('import')}
+        onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
       />
 
-      {/* 3. POPULAR CATEGORIES */}
+      {/* 2. SHOP BY CATEGORY GRID SECTION (Left Banner + 10-Card Grid) */}
       <PopularCategories
         onSelectCategory={(catName) => {
           onSelectCategory(catName);
           onNavigatePage('shop');
         }}
         onBrowseAllCategories={onOpenCategoriesModal}
+      />
+
+      {/* 3. SPECIAL OFFER & MEGA DEAL BANNER (Interactive Carousel + 4 Deal Cards) */}
+      <SpecialOfferSection
+        onShopNow={(targetSegment) => {
+          if (targetSegment === 'wholesale') onNavigatePage('wholesale');
+          else if (targetSegment === 'import') onNavigatePage('import');
+          else if (targetSegment === 'retail') onNavigatePage('retail');
+          else onNavigatePage('shop');
+        }}
+        onAddToCart={onAddToCart}
+        onQuickView={onQuickView}
       />
 
       {/* 4. TRENDING PRODUCTS */}
@@ -114,6 +131,17 @@ export const HomePage: React.FC<HomePageProps> = ({
       <MarketFeed
         onJoinDiscussion={onJoinDiscussion}
         onViewPost={onViewPost}
+      />
+
+      {/* SOB AI SHOPPING ASSISTANT DRAWER */}
+      <SobaiAIDrawer
+        isOpen={isAIAssistantOpen}
+        onClose={() => setIsAIAssistantOpen(false)}
+        onNavigateShop={(cat) => {
+          setIsAIAssistantOpen(false);
+          if (cat) onSelectCategory(cat);
+          onNavigatePage('shop');
+        }}
       />
     </div>
   );

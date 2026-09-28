@@ -51,6 +51,10 @@ export interface User {
   is_locked?: boolean;
   lock_reason?: string;
   notifications?: NotificationItem[];
+  admin_type?: 'super_admin' | 'employee' | 'general_admin';
+  permissions?: string[];
+  seller_commission_percent?: number;
+  seller_commission_active?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -103,6 +107,14 @@ export interface Order {
   buyer_customer_id?: string;
   items: OrderItem[];
   total_amount: number;
+  sale_amount?: number;
+  marketplace_commission_type?: 'seller' | 'category' | 'platform' | 'none';
+  marketplace_commission_percent?: number;
+  marketplace_commission_amount?: number;
+  cod_fee?: number;
+  cod_commission_amount?: number;
+  seller_earnings?: number;
+  is_cod?: boolean;
   status: 'pending' | 'processing' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
@@ -112,11 +124,24 @@ const DATA_DIR = path.resolve(process.cwd(), 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+const COMMISSION_FILE = path.join(DATA_DIR, 'commission_settings.json');
 
 // In-memory caches synced to disk
 let users: User[] = [];
 let products: Product[] = [];
 let orders: Order[] = [];
+let commissionSettings: any = null;
+
+function saveCommissionToDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(COMMISSION_FILE, JSON.stringify(commissionSettings, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving commission settings to disk:', err);
+  }
+}
 
 /**
  * Generate a sequential auto-increment Customer ID:
@@ -503,6 +528,16 @@ function ensureStorage() {
         },
       ];
       saveOrdersToDisk();
+    }
+
+    // 4. Commission Settings Initialization
+    if (fs.existsSync(COMMISSION_FILE)) {
+      try {
+        const commData = fs.readFileSync(COMMISSION_FILE, 'utf-8');
+        commissionSettings = JSON.parse(commData);
+      } catch (_) {
+        commissionSettings = null;
+      }
     }
   } catch (err) {
     console.error('Error initializing data storage:', err);
@@ -959,5 +994,44 @@ export const db = {
     order.updated_at = new Date().toISOString();
     saveOrdersToDisk();
     return order;
+  },
+
+  getCommissionSettings() {
+    if (!commissionSettings) {
+      commissionSettings = {
+        platform_commission_enabled: true,
+        category_commission_enabled: true,
+        seller_commission_enabled: true,
+        retailer_commission_percent: 3.0,
+        wholesaler_commission_percent: 2.0,
+        importer_commission_percent: 1.5,
+        cod_commission_percent: 2.0,
+        cod_fee: 0,
+        category_commissions: [
+          { category_id: 'cat-fashion', category_name: 'Fashion & Apparel', category_commission_percent: 5.0, is_active: true, updated_at: new Date().toISOString() },
+          { category_id: 'cat-electronics', category_name: 'Electronics & Tech', category_commission_percent: 3.0, is_active: true, updated_at: new Date().toISOString() },
+          { category_id: 'cat-beauty', category_name: 'Cosmetics & Beauty', category_commission_percent: 7.0, is_active: true, updated_at: new Date().toISOString() },
+          { category_id: 'cat-home', category_name: 'Home & Living', category_commission_percent: 4.0, is_active: true, updated_at: new Date().toISOString() },
+          { category_id: 'cat-ceramics', category_name: 'Ceramics & Handcrafts', category_commission_percent: 6.0, is_active: true, updated_at: new Date().toISOString() },
+        ],
+        seller_commissions: [
+          { seller_id: 'usr_demo_seller', seller_name: 'Elena Rostova', shop_id: 'RTL-10024', store_name: 'Artisan Haven Studio', business_type: 'Retailer', seller_commission_percent: 4.0, seller_commission_active: true, updated_at: new Date().toISOString() },
+          { seller_id: 'usr_pending_seller_1', seller_name: 'Marcus Vance', shop_id: 'WHS-10085', store_name: 'GreenWorks Woodcraft', business_type: 'Wholesaler', seller_commission_percent: 2.0, seller_commission_active: true, updated_at: new Date().toISOString() },
+        ],
+        updated_at: new Date().toISOString(),
+      };
+      saveCommissionToDisk();
+    }
+    return commissionSettings;
+  },
+
+  updateCommissionSettings(newSettings: any) {
+    commissionSettings = {
+      ...this.getCommissionSettings(),
+      ...newSettings,
+      updated_at: new Date().toISOString(),
+    };
+    saveCommissionToDisk();
+    return commissionSettings;
   },
 };

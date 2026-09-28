@@ -67,6 +67,10 @@ async function startServer() {
   if (!fs.existsSync(catUploadsDir)) {
     fs.mkdirSync(catUploadsDir, { recursive: true });
   }
+  const brandsUploadDir = path.resolve(uploadsDir, 'brands');
+  if (!fs.existsSync(brandsUploadDir)) {
+    fs.mkdirSync(brandsUploadDir, { recursive: true });
+  }
   app.use(
     '/uploads',
     express.static(uploadsDir, {
