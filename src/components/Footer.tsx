@@ -32,7 +32,7 @@ export const Footer: React.FC<FooterProps> = ({
 
   return (
     <footer id="footer" className="bg-[#111827] text-slate-300 pt-12 pb-10 border-t border-slate-800">
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
         {/* Top Feature Highlights Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-12 border-b border-slate-800">
           <div className="flex items-center gap-3.5">

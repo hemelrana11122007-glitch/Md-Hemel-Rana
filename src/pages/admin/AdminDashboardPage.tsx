@@ -18,6 +18,7 @@ import { ManageCourierView } from '../../components/admin/views/ManageCourierVie
 import { CategoryManagementView } from '../../components/admin/views/CategoryManagementView';
 import { BrandManagementView } from '../../components/admin/views/BrandManagementView';
 import { CommissionSettingsView } from '../../components/admin/views/CommissionSettingsView';
+import { SpecialOffersView } from '../../components/admin/views/SpecialOffersView';
 import { GeneralModuleView } from '../../components/admin/views/GeneralModuleView';
 import { useAuth } from '../../context/AuthContext';
 import { adminApi } from '../../services/adminApi';
@@ -237,6 +238,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <CommissionSettingsView onShowToast={onShowToast} />
               )}
 
+              {activeView === 'special-offers' && (
+                <SpecialOffersView onShowToast={onShowToast} />
+              )}
+
               {/* All other modules handled smoothly with specialized controls */}
               {![
                 'overview',
@@ -252,6 +257,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 'category',
                 'brand',
                 'commission-settings',
+                'special-offers',
                 'website-seo',
                 'seo-general-identity',
                 'seo-xml-sitemap',

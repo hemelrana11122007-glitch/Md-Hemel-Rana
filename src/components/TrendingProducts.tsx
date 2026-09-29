@@ -33,7 +33,7 @@ export const TrendingProducts: React.FC<TrendingProductsProps> = ({
 
   return (
     <section id="trending" className="py-8 sm:py-10 bg-[#F8FAFA] border-b border-slate-100">
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

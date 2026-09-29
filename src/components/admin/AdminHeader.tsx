@@ -239,7 +239,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
       case 'terms-privacy':
         return { category: 'Platform & System Settings', page: 'Terms & Privacy' };
       case 'social-footer':
-        return { category: 'Platform & System Settings', page: 'Social & Footer' };
+      case 'social-footer-links':
+        return { category: 'Platform & System Settings', page: 'Social & Footer Links' };
+      case 'slider-settings':
+        return { category: 'Platform & System Settings', page: 'Slider Settings' };
       case 'file-manager':
         return { category: 'Platform & System Settings', page: 'File Manager' };
       case 'database-management':

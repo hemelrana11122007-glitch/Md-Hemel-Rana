@@ -68,7 +68,7 @@ export const RetailPage: React.FC<RetailPageProps> = ({
 
   return (
     <div className="py-8 bg-[#F8FAFA] min-h-[calc(100vh-200px)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
           <span>Home</span>

@@ -71,6 +71,10 @@ async function startServer() {
   if (!fs.existsSync(brandsUploadDir)) {
     fs.mkdirSync(brandsUploadDir, { recursive: true });
   }
+  const offersUploadDir = path.resolve(uploadsDir, 'offers');
+  if (!fs.existsSync(offersUploadDir)) {
+    fs.mkdirSync(offersUploadDir, { recursive: true });
+  }
   app.use(
     '/uploads',
     express.static(uploadsDir, {
@@ -110,6 +114,16 @@ async function startServer() {
       res.json({ success: true, statusMap });
     } catch (err) {
       res.status(500).json({ error: 'Failed to retrieve seller status map' });
+    }
+  });
+
+  // Public endpoint for all products in the database (For multi-vendor dynamic section display)
+  app.get('/api/products/public', (_req, res) => {
+    try {
+      const allDbProducts = db.getAllProducts();
+      res.json({ success: true, products: allDbProducts });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to retrieve products' });
     }
   });
 

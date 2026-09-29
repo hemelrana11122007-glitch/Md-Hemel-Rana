@@ -57,6 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navLinks = [
     { id: 'home', label: 'Home', path: '/', altPath: 'index.html' },
     { id: 'shop', label: 'Shop', path: '/shop', altPath: 'shop.html' },
+    { id: 'categories', label: 'Categories', path: '/categories' },
     { id: 'retail', label: 'Retail', path: '/retail', altPath: 'retail.html', dotColor: 'bg-emerald-500' },
     { id: 'wholesale', label: 'Wholesale', path: '/wholesale', altPath: 'wholesale.html', dotColor: 'bg-amber-500' },
     { id: 'import', label: 'Import', path: '/import', altPath: 'import.html', dotColor: 'bg-[#008080]' },
@@ -69,8 +70,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full bg-white shadow-[0_2px_12px_rgba(0,128,128,0.06)] border-b border-slate-100">
       {/* Top Banner Bar for Trust / Multi-Vendor highlight */}
-      <div className="bg-[#008080] text-white text-[12px] py-1.5 px-3 sm:px-5 lg:px-6 hidden md:block">
-        <div className="max-w-[1536px] mx-auto flex items-center justify-between">
+      <div className="bg-[#008080] text-white text-[12px] py-1.5 px-3 sm:px-4 lg:px-4 hidden md:block">
+        <div className="max-w-[1720px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1.5">
               <Truck className="w-3.5 h-3.5" />
@@ -105,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Main Navbar Row */}
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6 py-3.5">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4 py-3.5">
         <div className="flex items-center justify-between gap-4 lg:gap-8">
           {/* Logo on Left: AR Market BD */}
           <div className="flex items-center gap-3">
@@ -318,7 +319,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Navigation Menu Below Main Row */}
       <nav className="bg-gradient-to-r from-[#042f24] via-[#064e3b] to-[#0f766e] shadow-md hidden md:block border-t border-teal-600/30">
-        <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+        <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-1 lg:space-x-1.5 py-2">
               {navLinks.map((link) => {

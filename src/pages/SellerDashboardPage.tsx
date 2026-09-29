@@ -46,11 +46,13 @@ import { adminApi } from '../services/adminApi';
 export interface SellerDashboardPageProps {
   onNavigateHome: () => void;
   onShowToast: (msg: string) => void;
+  onNavigatePage?: (pageId: string, urlPath?: string) => void;
 }
 
 export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
   onNavigateHome,
   onShowToast,
+  onNavigatePage,
 }) => {
   const { user, setUser, logout, setIsMailboxOpen } = useAuth();
 
@@ -82,6 +84,32 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
   const [activeTab, setActiveTab] = useState<string>(
     isApproved ? 'dashboard' : 'kyc'
   );
+
+  const [sellerProducts, setSellerProducts] = useState<any[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
+
+  const fetchSellerProducts = async () => {
+    setIsLoadingProducts(true);
+    try {
+      const res = await fetch('/api/seller/products');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products)) {
+          setSellerProducts(data.products);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching seller products:', err);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'products' && isApproved) {
+      fetchSellerProducts();
+    }
+  }, [activeTab, isApproved]);
 
   // Dropdown & Header States
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -1893,11 +1921,135 @@ export const SellerDashboardPage: React.FC<SellerDashboardPageProps> = ({
           {/* 2. Product Management View (Unlocked) */}
           {activeTab === 'products' && isApproved && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-slate-900 font-display">Product Management</h2>
-              <p className="text-xs text-slate-500">Manage your product catalog, stock counts, and new listings.</p>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold">
-                Catalog Active: 18 Listed Products
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 font-display">Product Catalog</h2>
+                  <p className="text-xs text-slate-500">Manage your product catalog, stock counts, and list new products.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (onNavigatePage) {
+                      const bType = (businessType || '').toLowerCase();
+                      const path = bType.includes('wholesal') 
+                        ? '/wholesaler/products/add-new' 
+                        : bType.includes('import') 
+                        ? '/importer/products/add-new' 
+                        : '/retailer/products/add-new';
+                      onNavigatePage('seller-add-product', path);
+                    } else {
+                      onShowToast('Routing system not fully linked.');
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-4.5 py-2.5 bg-[#008080] hover:bg-[#006666] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer select-none"
+                >
+                  <span className="text-sm">+</span>
+                  <span>Add New Product</span>
+                </button>
               </div>
+
+              {isLoadingProducts ? (
+                <div className="space-y-3 py-6">
+                  <div className="h-10 bg-slate-100 animate-pulse rounded-lg w-full"></div>
+                  <div className="h-16 bg-slate-50 animate-pulse rounded-xl w-full"></div>
+                  <div className="h-16 bg-slate-50 animate-pulse rounded-xl w-full"></div>
+                </div>
+              ) : sellerProducts.length === 0 ? (
+                <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-2xl bg-white space-y-4">
+                  <div className="w-12 h-12 bg-teal-50 text-[#008080] flex items-center justify-center rounded-2xl mx-auto">
+                    <Package className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-slate-950 text-sm">No products found</h3>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto">You haven't listed any retail products yet. Click the button above to add your first product.</p>
+                  </div>
+                  <button
+                    onClick={() => onNavigatePage?.('seller-add-product', '/retailer/products/add-new')}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#008080] hover:underline"
+                  >
+                    Add your first product &rarr;
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                          <th className="py-3 px-4">Product Details</th>
+                          <th className="py-3 px-4">SKU / Code</th>
+                          <th className="py-3 px-4">Category</th>
+                          <th className="py-3 px-4 text-right">Price</th>
+                          <th className="py-3 px-4 text-center">Stock</th>
+                          <th className="py-3 px-4 text-center">Weight</th>
+                          <th className="py-3 px-4 text-center">Badges</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                        {sellerProducts.map((p) => (
+                          <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-3.5 px-4 flex items-center gap-3">
+                              <img
+                                src={p.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80&q=80'}
+                                alt={p.title}
+                                className="w-10 h-10 rounded-lg object-cover bg-slate-100 border border-slate-200"
+                              />
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-slate-900 truncate max-w-[200px]" title={p.title}>
+                                  {p.title}
+                                </h4>
+                                <span className="text-[10px] text-slate-400 capitalize">{p.status || 'active'}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
+                              {p.sku || `SKU-${p.id.slice(-6).toUpperCase()}`}
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-600">
+                              {p.category}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="font-mono tabular-nums text-slate-900">৳{p.price}</div>
+                              {p.old_price && (
+                                <div className="font-mono tabular-nums text-[10px] text-slate-400 line-through">৳{p.old_price}</div>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span
+                                className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  p.stock <= 5
+                                    ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                }`}
+                              >
+                                {p.stock} units
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center text-slate-500">
+                              {p.weight_kg ? `${p.weight_kg} kg` : '0.5 kg'}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="flex flex-wrap justify-center gap-1">
+                                {p.badge && (
+                                  <span className="inline-flex px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase bg-[#008080] text-white shadow-2xs">
+                                    {p.badge}
+                                  </span>
+                                )}
+                                {p.is_featured && (
+                                  <span className="inline-flex px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase bg-amber-500 text-white shadow-2xs">
+                                    FEATURED
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 font-bold text-center">
+                    Displaying {sellerProducts.length} premium products listed in your seller account.
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

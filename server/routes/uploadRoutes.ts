@@ -10,6 +10,7 @@ export const uploadRouter = Router();
 const uploadsBaseDir = path.resolve(process.cwd(), 'uploads');
 const categoriesUploadDir = path.resolve(uploadsBaseDir, 'categories');
 const brandsUploadDir = path.resolve(uploadsBaseDir, 'brands');
+const offersUploadDir = path.resolve(uploadsBaseDir, 'offers');
 
 if (!fs.existsSync(uploadsBaseDir)) {
   fs.mkdirSync(uploadsBaseDir, { recursive: true });
@@ -19,6 +20,9 @@ if (!fs.existsSync(categoriesUploadDir)) {
 }
 if (!fs.existsSync(brandsUploadDir)) {
   fs.mkdirSync(brandsUploadDir, { recursive: true });
+}
+if (!fs.existsSync(offersUploadDir)) {
+  fs.mkdirSync(offersUploadDir, { recursive: true });
 }
 
 // Allowed MIME types and extensions
@@ -357,6 +361,114 @@ uploadRouter.post(
       res.status(500).json({
         success: false,
         error: 'Internal server error while saving uploaded brand asset. Please try again.',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/upload/offer-asset
+ * Strictly validates and saves Special Offer Creative Banner to secure server storage
+ * Zero localstorage blobs, cryptographic filenames, magic bytes & anti-XSS check
+ */
+uploadRouter.post(
+  '/offer-asset',
+  (req: Request, res: Response, next: NextFunction) => {
+    upload.single('file')(req, res, async (err: any) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({
+            success: false,
+            error: 'File size exceeds maximum allowed server limit of 6MB.',
+          });
+          return;
+        }
+        if (err.message === 'INVALID_MIME_TYPE') {
+          res.status(400).json({
+            success: false,
+            error: 'Invalid file format. Only PNG, JPG, JPEG, WEBP, and SVG formats are permitted.',
+          });
+          return;
+        }
+        res.status(400).json({
+          success: false,
+          error: `Upload processing error: ${err.message || 'Unknown multer error'}`,
+        });
+        return;
+      }
+      next();
+    });
+  },
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const file = req.file;
+      if (!file) {
+        res.status(400).json({
+          success: false,
+          error: 'No image file was received. Please select a valid creative banner file.',
+        });
+        return;
+      }
+
+      // 1. Strict MIME verification
+      const mimetype = file.mimetype.toLowerCase();
+      if (!ALLOWED_MIME_TYPES.has(mimetype)) {
+        res.status(400).json({
+          success: false,
+          error: 'Only PNG, JPG, JPEG, WEBP, and SVG formats are permitted.',
+        });
+        return;
+      }
+
+      // 2. Strict Size verification (Max 5MB for Special Offer Creative)
+      const maxOfferBytes = 5 * 1024 * 1024;
+      if (file.size > maxOfferBytes) {
+        const mb = (file.size / (1024 * 1024)).toFixed(2);
+        res.status(400).json({
+          success: false,
+          error: `Banner image size cannot exceed 5MB (Selected: ${mb} MB).`,
+        });
+        return;
+      }
+
+      // 3. Magic Bytes & Anti-XSS Content Inspection
+      const isSignatureValid = validateBufferMagicBytes(file.buffer, mimetype);
+      if (!isSignatureValid) {
+        res.status(400).json({
+          success: false,
+          error: 'File signature verification failed or dangerous content detected in the image payload.',
+        });
+        return;
+      }
+
+      // 4. Safe Filename Generation
+      const ext = EXTENSION_MAP[mimetype] || path.extname(file.originalname).toLowerCase() || '.jpg';
+      const randomToken = crypto.randomBytes(8).toString('hex');
+      const safeFilename = `offer-banner-${Date.now()}-${randomToken}${ext}`;
+
+      const targetPath = path.join(offersUploadDir, safeFilename);
+
+      // Write file securely to disk
+      await fs.promises.writeFile(targetPath, file.buffer);
+
+      // Generate hosted static URL
+      const hostedUrl = `/uploads/offers/${safeFilename}`;
+
+      res.json({
+        success: true,
+        url: hostedUrl,
+        filename: safeFilename,
+        originalName: path.basename(file.originalname),
+        size: file.size,
+        mimeType: mimetype,
+        storage: 'server_secure_storage',
+        uploadedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error('[UploadRouter] Special offer asset upload failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error while saving special offer asset. Please try again.',
       });
     }
   }

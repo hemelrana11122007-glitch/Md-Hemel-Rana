@@ -4,6 +4,7 @@ import { PopularCategories } from '../components/PopularCategories';
 import { SpecialOfferSection } from '../components/SpecialOfferSection';
 import { TrendingProducts } from '../components/TrendingProducts';
 import { BestProducts } from '../components/BestProducts';
+import { FeaturedProducts } from '../components/FeaturedProducts';
 import { PopularBrands } from '../components/PopularBrands';
 import { ProductSegments } from '../components/ProductSegments';
 import { FeaturedSellers } from '../components/FeaturedSellers';
@@ -18,7 +19,7 @@ interface HomePageProps {
   onToggleWishlist: (product: Product) => void;
   wishlistIds: string[];
   onQuickView: (product: Product) => void;
-  onNavigatePage: (page: string) => void;
+  onNavigatePage: (page: string, urlPath?: string) => void;
   onSelectCategory: (categoryName: string) => void;
   onSelectBrand: (brandName: string) => void;
   onOpenCategoriesModal: () => void;
@@ -60,13 +61,17 @@ export const HomePage: React.FC<HomePageProps> = ({
       <PopularCategories
         onSelectCategory={(catName) => {
           onSelectCategory(catName);
-          onNavigatePage('shop');
+          onNavigatePage('shop', '/shop');
         }}
-        onBrowseAllCategories={onOpenCategoriesModal}
+        onBrowseAllCategories={() => onNavigatePage('categories', '/categories')}
       />
 
       {/* 3. SPECIAL OFFER & MEGA DEAL BANNER (Interactive Carousel + 4 Deal Cards) */}
       <SpecialOfferSection
+        allProducts={products}
+        onNavigateToOffer={(offerId) => {
+          onNavigatePage('special-offer-detail', `/special-offers/${offerId}`);
+        }}
         onShopNow={(targetSegment) => {
           if (targetSegment === 'wholesale') onNavigatePage('wholesale');
           else if (targetSegment === 'import') onNavigatePage('import');
@@ -79,6 +84,16 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* 4. TRENDING PRODUCTS */}
       <TrendingProducts
+        products={products}
+        onAddToCart={onAddToCart}
+        onBuyNow={onBuyNow}
+        onToggleWishlist={onToggleWishlist}
+        wishlistIds={wishlistIds}
+        onQuickView={onQuickView}
+      />
+
+      {/* FEATURED PRODUCTS SECTION (Dynamically visible only if featured products exist) */}
+      <FeaturedProducts
         products={products}
         onAddToCart={onAddToCart}
         onBuyNow={onBuyNow}

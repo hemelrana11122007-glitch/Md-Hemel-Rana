@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shirt,
   Smartphone,
@@ -15,6 +15,11 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import categoryBannerImg from '../assets/images/category_banner_emerald_leaves_1790626963067.jpg';
+import {
+  sliderService,
+  SLIDERS_UPDATED_EVENT,
+  CategoryBannerItem,
+} from '../services/sliderService';
 
 interface PopularCategoriesProps {
   onSelectCategory: (categoryName: string) => void;
@@ -27,6 +32,41 @@ export const PopularCategories: React.FC<PopularCategoriesProps> = ({
   onBrowseAllCategories,
   activeCategory,
 }) => {
+  const [categoryBanners, setCategoryBanners] = useState<CategoryBannerItem[]>(() => {
+    return sliderService.getCategoryBanners().filter((b) => b.isActive);
+  });
+  const [currentCatIndex, setCurrentCatIndex] = useState(0);
+
+  useEffect(() => {
+    const syncCategoryBanners = () => {
+      const active = sliderService.getCategoryBanners().filter((b) => b.isActive);
+      setCategoryBanners(active);
+    };
+    syncCategoryBanners();
+    window.addEventListener(SLIDERS_UPDATED_EVENT, syncCategoryBanners);
+    window.addEventListener('storage', syncCategoryBanners);
+
+    return () => {
+      window.removeEventListener(SLIDERS_UPDATED_EVENT, syncCategoryBanners);
+      window.removeEventListener('storage', syncCategoryBanners);
+    };
+  }, []);
+
+  // Reset index if out of bounds
+  useEffect(() => {
+    if (currentCatIndex >= categoryBanners.length && categoryBanners.length > 0) {
+      setCurrentCatIndex(0);
+    }
+  }, [categoryBanners.length, currentCatIndex]);
+
+  // Auto advance carousel if multiple active
+  useEffect(() => {
+    if (categoryBanners.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentCatIndex((prev) => (prev + 1) % categoryBanners.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [categoryBanners.length]);
   // Mobile 8 Circular Categories (4 cols x 2 rows)
   const mobileCategories = [
     { id: 'fashion', name: 'Fashion', fullName: 'Fashion & Apparel', icon: Shirt },
@@ -126,7 +166,7 @@ export const PopularCategories: React.FC<PopularCategoriesProps> = ({
 
   return (
     <section id="categories" className="py-4 sm:py-5 bg-white border-b border-slate-100">
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
         {/* ========================================================================= */}
         {/* MOBILE VIEW: 4-Column Circular Category Badges Grid                       */}
         {/* ========================================================================= */}
@@ -181,41 +221,72 @@ export const PopularCategories: React.FC<PopularCategoriesProps> = ({
         {/* DESKTOP VIEW: Left Featured Category Banner (Pure Rectangular) + 11-Grid  */}
         {/* ========================================================================= */}
         <div className="hidden md:grid md:grid-cols-12 gap-3 sm:gap-3.5 items-stretch">
-          {/* LEFT: Featured Category Banner with Pure Rectangular Shape (4 Cols on LG) */}
+          {/* LEFT: Featured Category Banner with Full Background Image & Fixed Button */}
           <div
-            className="md:col-span-4 bg-gradient-to-r from-[#042f24] via-[#064e3b] to-[#0f766e] text-white p-4 sm:p-5 relative overflow-hidden shadow-md flex flex-col justify-between min-h-[170px] sm:min-h-[185px] lg:min-h-[190px] rounded-2xl border border-teal-600/30"
+            onClick={onBrowseAllCategories}
+            className="md:col-span-4 bg-slate-900 text-white p-4 sm:p-5 relative overflow-hidden shadow-md flex flex-col justify-between min-h-[170px] sm:min-h-[185px] lg:min-h-[190px] rounded-2xl border border-teal-600/30 cursor-pointer group"
           >
-            {/* Background Graphic Blend with Products & Tropical Leaves */}
-            <div className="absolute right-0 top-0 bottom-0 w-3/5 sm:w-1/2 pointer-events-none overflow-hidden opacity-95">
+            {/* Full Card Area Background Picture (Full Image Display - No Filters) */}
+            {categoryBanners.length > 0 ? (
+              categoryBanners.map((banner, idx) => (
+                <img
+                  key={banner.id || idx}
+                  src={banner.imageUrl}
+                  alt="Shop by Category Banner"
+                  className={`absolute inset-0 w-full h-full object-cover object-center rounded-2xl transition-all duration-700 group-hover:scale-105 ${
+                    idx === currentCatIndex ? 'opacity-100 z-0' : 'opacity-0 -z-10'
+                  }`}
+                />
+              ))
+            ) : (
               <img
                 src={categoryBannerImg}
-                alt="Shop by Category Products"
-                className="w-full h-full object-cover object-right"
+                alt="Shop by Category Banner"
+                className="absolute inset-0 w-full h-full object-cover object-center rounded-2xl transition-transform duration-700 group-hover:scale-105 z-0"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#042f24] via-[#042f24]/70 to-transparent" />
-            </div>
+            )}
 
-            {/* Top Text Content */}
-            <div className="space-y-1 relative z-10 max-w-[55%]">
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight font-display leading-tight">
+            {/* Subtle Left Text Scrim Gradient to ensure title legibility over any picture */}
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/30 to-transparent pointer-events-none rounded-2xl z-5" />
+
+            {/* Top Text Content (Fixed Position) */}
+            <div className="space-y-1 relative z-10 max-w-[60%]">
+              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight font-display leading-tight drop-shadow-sm">
                 Shop by<br />Category
               </h2>
 
-              <p className="text-[10px] sm:text-[11px] font-medium text-emerald-100 leading-snug">
+              <p className="text-[10px] sm:text-[11px] font-medium text-emerald-100 leading-snug drop-shadow-xs">
                 Find what you need, all in one place.
               </p>
             </div>
 
-            {/* White Pill Button 'Browse All →' */}
-            <div className="pt-2 relative z-10">
+            {/* White Pill Button 'Browse All →' (Fixed Position - Direct Redirection to All Categories) */}
+            <div className="pt-2 relative z-10 flex items-center justify-between">
               <button
                 type="button"
-                onClick={onBrowseAllCategories}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold text-slate-900 bg-white hover:bg-emerald-50 active:scale-95 rounded-full shadow-md transition-all cursor-pointer group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBrowseAllCategories();
+                }}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold text-slate-900 bg-white hover:bg-emerald-50 active:scale-95 rounded-full shadow-md transition-all cursor-pointer group/btn"
               >
                 <span>Browse All</span>
-                <ArrowRight className="w-3 h-3 text-[#0f766e] group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-3 h-3 text-[#0f766e] group-hover/btn:translate-x-0.5 transition-transform" />
               </button>
+
+              {/* Slide Indicator Dots if multiple category banners */}
+              {categoryBanners.length > 1 && (
+                <div className="flex items-center gap-1 bg-slate-900/60 backdrop-blur-xs px-2 py-0.5 rounded-full border border-white/20">
+                  {categoryBanners.map((_, idx) => (
+                    <span
+                      key={idx}
+                      className={`h-1.5 rounded-full transition-all ${
+                        idx === currentCatIndex ? 'w-3.5 bg-emerald-400' : 'w-1.5 bg-white/60'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

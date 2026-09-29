@@ -50,6 +50,7 @@ import {
   X,
   FileCode,
   Compass,
+  Sliders,
 } from 'lucide-react';
 
 export type AdminViewKey =
@@ -97,6 +98,8 @@ export type AdminViewKey =
   | 'maintenance-mode'
   | 'terms-privacy'
   | 'social-footer'
+  | 'slider-settings'
+  | 'social-footer-links'
   | 'file-manager'
   | 'database-management'
   | 'push-notifications'
@@ -146,6 +149,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [seoExpanded, setSeoExpanded] = useState(
     activeView.startsWith('seo-') || activeView === 'website-seo'
+  );
+  const [socialFooterExpanded, setSocialFooterExpanded] = useState(
+    activeView === 'social-footer' ||
+      activeView === 'slider-settings' ||
+      activeView === 'social-footer-links'
   );
 
   // Define sidebar menu categories matching the user prompt exactly
@@ -231,7 +239,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         { key: 'system-utility', label: 'System Utility', icon: Wrench },
         { key: 'maintenance-mode', label: 'Maintenance Mode', icon: AlertTriangle },
         { key: 'terms-privacy', label: 'Terms & Privacy', icon: FileCheck2 },
-        { key: 'social-footer', label: 'Social & Footer', icon: Share2 },
+        {
+          key: 'social-footer',
+          label: 'Social & Footer',
+          icon: Share2,
+          subItems: [
+            { key: 'slider-settings', label: 'Slider Settings', icon: Sliders },
+            { key: 'social-footer-links', label: 'Social & Footer Links', icon: Share2 },
+          ],
+        },
         { key: 'file-manager', label: 'File Manager', icon: FolderOpen },
         { key: 'database-management', label: 'Database Management', icon: Database },
         { key: 'push-notifications', label: 'Push Notification Settings', icon: BellRing },
@@ -261,11 +277,18 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   const handleItemClick = (item: SidebarMenuItem) => {
     if (item.subItems) {
-      setSeoExpanded(!seoExpanded);
-      if (!seoExpanded) {
-        onSelectView('seo-general-identity');
-      } else {
-        onSelectView(item.key);
+      if (item.key === 'website-seo') {
+        const next = !seoExpanded;
+        setSeoExpanded(next);
+        if (next && !activeView.startsWith('seo-')) {
+          onSelectView('seo-general-identity');
+        }
+      } else if (item.key === 'social-footer') {
+        const next = !socialFooterExpanded;
+        setSocialFooterExpanded(next);
+        if (next && activeView !== 'slider-settings' && activeView !== 'social-footer-links') {
+          onSelectView('slider-settings');
+        }
       }
     } else {
       onSelectView(item.key);
@@ -357,9 +380,17 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <div className="space-y-0.5">
                 {category.items.map((item) => {
                   const Icon = item.icon;
+                  const isExpanded =
+                    item.key === 'website-seo'
+                      ? seoExpanded
+                      : item.key === 'social-footer'
+                      ? socialFooterExpanded
+                      : false;
+
                   const isItemActive =
                     activeView === item.key ||
-                    (item.subItems && (seoExpanded || activeView.startsWith('seo-')));
+                    (item.subItems &&
+                      (isExpanded || item.subItems.some((sub) => sub.key === activeView)));
 
                   return (
                     <div key={item.key}>
@@ -396,7 +427,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
                           {item.subItems && (
                             <span className={isItemActive ? 'text-[#008080]' : 'text-slate-400 group-hover:text-[#008080]'}>
-                              {seoExpanded ? (
+                              {isExpanded ? (
                                 <ChevronDown className="w-3.5 h-3.5" />
                               ) : (
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -406,8 +437,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                         </div>
                       </button>
 
-                      {/* Expandable Sub-items (Specifically for Website & SEO) */}
-                      {item.subItems && seoExpanded && (
+                      {/* Expandable Sub-items (Website & SEO, Social & Footer) */}
+                      {item.subItems && isExpanded && (
                         <div className="mt-1 ml-4 pl-2 border-l border-slate-200 space-y-0.5 animate-in slide-in-from-top-1 duration-150">
                           {item.subItems.map((sub) => {
                             const SubIcon = sub.icon;

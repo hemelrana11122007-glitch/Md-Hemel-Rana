@@ -22,6 +22,8 @@ export interface Product {
   inStock: boolean;
   isTrending?: boolean;
   isBestProduct?: boolean;
+  isFeatured?: boolean;
+  specialOfferId?: string;
   description: string;
   weight_kg?: number;
   bd_import_cost?: number;

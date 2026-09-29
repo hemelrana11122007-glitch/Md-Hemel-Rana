@@ -18,6 +18,9 @@ import { CustomerDashboardPage } from './pages/CustomerDashboardPage';
 import { SellerDashboardPage } from './pages/SellerDashboardPage';
 import { BecomeSellerPage } from './pages/BecomeSellerPage';
 import { SellerRegisterPage } from './pages/SellerRegisterPage';
+import { SpecialOfferPage } from './pages/SpecialOfferPage';
+import { CategoriesPage } from './pages/CategoriesPage';
+import { AddProductPage } from './pages/AddProductPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Drawers & Modals
@@ -40,9 +43,14 @@ export default function App() {
   // Routing Helper to parse initial path
   const getPageFromPath = (path: string): string => {
     const clean = path.toLowerCase().replace(/^\//, '');
+    if (clean.startsWith('special-offers') || clean.startsWith('campaign')) {
+      return 'special-offer-detail';
+    }
+    if (clean.includes('retailer/products/add-new') || clean.includes('wholesaler/products/add-new') || clean.includes('importer/products/add-new') || clean.includes('seller/products/add-new')) return 'seller-add-product';
     if (clean.includes('register/retailer')) return 'register-retailer';
     if (clean.includes('register/wholesaler')) return 'register-wholesaler';
     if (clean.includes('register/importer')) return 'register-importer';
+    if (clean.includes('categories')) return 'categories';
     if (clean.includes('shop')) return 'shop';
     if (clean.includes('retail')) return 'retail';
     if (clean.includes('wholesale')) return 'wholesale';
@@ -68,9 +76,80 @@ export default function App() {
     getPageFromPath(window.location.pathname)
   );
 
+  const [selectedOfferId, setSelectedOfferId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const match = window.location.pathname.match(/\/(special-offers|campaign)\/(.+)/);
+      if (match) return match[2];
+    }
+    return 'offer-summer-deal';
+  });
+
   // Search & Category Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilterCategory, setSelectedFilterCategory] = useState<string | null>(null);
+
+  // Dynamic Combined Products List State (Mock Data + Live Database Products)
+  const [productsList, setProductsList] = useState<Product[]>(PRODUCTS);
+
+  const fetchDynamicProducts = async () => {
+    try {
+      const res = await fetch('/api/products/public');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products)) {
+          // Map database products to frontend Product format
+          const mappedDb: Product[] = data.products.map((p: any) => {
+            let segment: 'retail' | 'wholesale' | 'import' = 'retail';
+            const vType = String(p.vendor_type || '').toLowerCase();
+            if (vType.includes('wholesal')) {
+              segment = 'wholesale';
+            } else if (vType.includes('import')) {
+              segment = 'import';
+            }
+
+            return {
+              id: p.id,
+              title: p.title,
+              segment,
+              category: p.category || 'General',
+              price: Number(p.price) || 0,
+              originalPrice: p.old_price ? Number(p.old_price) : undefined,
+              rating: 5.0,
+              reviewsCount: 0,
+              image: p.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80',
+              seller: {
+                id: p.seller_id,
+                name: p.seller_name || 'Verified Merchant',
+                badge: p.badge || (segment === 'wholesale' ? 'Verified Wholesaler' : segment === 'import' ? 'Certified Importer' : 'Verified Retailer'),
+                verified: true
+              },
+              moq: p.moq ? Number(p.moq) : (segment === 'wholesale' ? 10 : 1),
+              originCountry: p.country_source || undefined,
+              shippingTime: segment === 'import' ? '4-7 Business Days (Air Express)' : '1-3 Days (Standard)',
+              inStock: p.stock > 0,
+              isTrending: false,
+              isBestProduct: true,
+              isFeatured: Boolean(p.is_featured),
+              specialOfferId: p.special_offer_id || undefined,
+              description: p.description || '',
+              weight_kg: p.weight_kg ? Number(p.weight_kg) : undefined,
+              bd_import_cost: p.import_cost_bdt ? Number(p.import_cost_bdt) : undefined,
+            };
+          });
+
+          // Filter out matching duplicate IDs from mock data
+          const filteredMock = PRODUCTS.filter(mock => !mappedDb.some(dbProd => dbProd.id === mock.id));
+          setProductsList([...mappedDb, ...filteredMock]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch dynamic products:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDynamicProducts();
+  }, [activePage]);
 
   // Cart & Wishlist State
   const [cart, setCart] = useState<CartItem[]>([
@@ -149,6 +228,12 @@ export default function App() {
   // Browser Navigation History Handler
   const handleNavigatePage = (pageId: string, urlPath?: string) => {
     setActivePage(pageId);
+    if (urlPath) {
+      const match = urlPath.match(/\/(special-offers|campaign)\/(.+)/);
+      if (match) {
+        setSelectedOfferId(match[2]);
+      }
+    }
     const targetUrl =
       urlPath ||
       (pageId === 'home'
@@ -174,7 +259,12 @@ export default function App() {
   // Listen to popstate (browser back/forward button)
   useEffect(() => {
     const onPopState = () => {
-      const page = getPageFromPath(window.location.pathname);
+      const path = window.location.pathname;
+      const page = getPageFromPath(path);
+      const match = path.match(/\/(special-offers|campaign)\/(.+)/);
+      if (match) {
+        setSelectedOfferId(match[2]);
+      }
       setActivePage(page);
     };
     window.addEventListener('popstate', onPopState);
@@ -229,8 +319,8 @@ export default function App() {
   };
 
   const wishlistProducts = useMemo(() => {
-    return PRODUCTS.filter((p) => wishlistIds.includes(p.id));
-  }, [wishlistIds]);
+    return productsList.filter((p) => wishlistIds.includes(p.id));
+  }, [wishlistIds, productsList]);
 
   // If active page is Admin Dashboard, render the dedicated Super Admin Portal layout
   if (activePage === 'admin') {
@@ -337,7 +427,7 @@ export default function App() {
       <main className="flex-1">
         {activePage === 'home' && (
           <HomePage
-            products={PRODUCTS}
+            products={productsList}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onToggleWishlist={handleToggleWishlist}
@@ -352,7 +442,7 @@ export default function App() {
               setSearchQuery(brandName);
               handleNavigatePage('shop', '/shop');
             }}
-            onOpenCategoriesModal={() => setTaxonomyModalType('categories')}
+            onOpenCategoriesModal={() => handleNavigatePage('categories', '/categories')}
             onOpenBrandsModal={() => setTaxonomyModalType('brands')}
             onJoinDiscussion={() => {
               setSelectedDiscussionPost(null);
@@ -370,9 +460,32 @@ export default function App() {
           />
         )}
 
+        {activePage === 'special-offer-detail' && (
+          <SpecialOfferPage
+            offerId={selectedOfferId}
+            allProducts={productsList}
+            onAddToCart={handleAddToCart}
+            onBuyNow={handleBuyNow}
+            onToggleWishlist={handleToggleWishlist}
+            wishlistIds={wishlistIds}
+            onQuickView={(prod) => setQuickViewProduct(prod)}
+            onNavigatePage={handleNavigatePage}
+          />
+        )}
+
+        {activePage === 'categories' && (
+          <CategoriesPage
+            onSelectCategory={(catName) => {
+              setSelectedFilterCategory(catName);
+              handleNavigatePage('shop', '/shop');
+            }}
+            onNavigatePage={handleNavigatePage}
+          />
+        )}
+
         {activePage === 'shop' && (
           <ShopPage
-            products={PRODUCTS}
+            products={productsList}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onToggleWishlist={handleToggleWishlist}
@@ -387,7 +500,7 @@ export default function App() {
 
         {activePage === 'retail' && (
           <RetailPage
-            products={PRODUCTS}
+            products={productsList}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onToggleWishlist={handleToggleWishlist}
@@ -399,7 +512,7 @@ export default function App() {
 
         {activePage === 'wholesale' && (
           <WholesalePage
-            products={PRODUCTS}
+            products={productsList}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onToggleWishlist={handleToggleWishlist}
@@ -411,7 +524,7 @@ export default function App() {
 
         {activePage === 'import' && (
           <ImportPage
-            products={PRODUCTS}
+            products={productsList}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
             onToggleWishlist={handleToggleWishlist}
@@ -508,6 +621,32 @@ export default function App() {
           >
             <SellerDashboardPage
               onNavigateHome={() => handleNavigatePage('home', '/')}
+              onShowToast={showToast}
+              onNavigatePage={handleNavigatePage}
+            />
+          </ProtectedRoute>
+        )}
+
+        {activePage === 'seller-add-product' && (
+          <ProtectedRoute
+            allowedRoles={['seller', 'admin']}
+            onNavigateHome={() => handleNavigatePage('home', '/')}
+            onOpenAuth={() => {
+              setAuthModalMode('signin');
+              setIsAuthOpen(true);
+            }}
+          >
+            <AddProductPage
+              onBackToDashboard={() => {
+                const bType = (user?.business_type || 'Retailer').toLowerCase();
+                if (bType.includes('wholesale')) {
+                  handleNavigatePage('seller-wholesaler-dashboard', '/seller/wholesaler/dashboard');
+                } else if (bType.includes('import')) {
+                  handleNavigatePage('seller-importer-dashboard', '/seller/importer/dashboard');
+                } else {
+                  handleNavigatePage('seller-retailer-dashboard', '/seller/retailer/dashboard');
+                }
+              }}
               onShowToast={showToast}
             />
           </ProtectedRoute>

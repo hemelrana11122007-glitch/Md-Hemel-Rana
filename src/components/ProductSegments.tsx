@@ -30,7 +30,7 @@ export const ProductSegments: React.FC<ProductSegmentsProps> = ({
     <div className="space-y-10 py-8 sm:py-10">
       {/* 1. RETAIL PRODUCTS SECTION */}
       <section id="retail-section" className="scroll-mt-24">
-        <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+        <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
           {/* Section Header */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 mb-6 border-b-2 border-[#008080]/20">
             <div className="flex items-start gap-3">
@@ -86,7 +86,7 @@ export const ProductSegments: React.FC<ProductSegmentsProps> = ({
 
       {/* 2. WHOLESALE PRODUCTS SECTION */}
       <section id="wholesale-section" className="scroll-mt-24 py-8 bg-[#F8FAFA] border-y border-slate-100">
-        <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+        <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
           {/* Section Header */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 mb-6 border-b-2 border-amber-500/20">
             <div className="flex items-start gap-3">
@@ -142,7 +142,7 @@ export const ProductSegments: React.FC<ProductSegmentsProps> = ({
 
       {/* 3. IMPORT PRODUCTS SECTION */}
       <section id="import-section" className="scroll-mt-24">
-        <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+        <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
           {/* Section Header */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 mb-6 border-b-2 border-[#008080]/30">
             <div className="flex items-start gap-3">

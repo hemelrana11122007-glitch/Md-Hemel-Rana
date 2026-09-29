@@ -10,7 +10,7 @@
     "verification_token_expires": null,
     "reset_token_hash": null,
     "reset_token_expires": null,
-    "refresh_token_hash": "437b4385988409847a070a87a90d98dfbd5d72bfe3d4ad7f14a30db2f1962647",
+    "refresh_token_hash": "799c635c9d2a39e0bf70756a4b8031636d000f898faf0f9e7fea3f17d93d66ed",
     "two_factor_secret": null,
     "two_factor_enabled": false,
     "phone": "+880 1711-999999",
@@ -18,7 +18,7 @@
     "address": "AR Market BD Headquarters, Dhaka, Bangladesh",
     "bio": "Super Administrator & Chief Marketplace Security Officer for AR Market BD.",
     "created_at": "2026-09-24T14:40:00.000Z",
-    "updated_at": "2026-09-28T20:04:41.260Z",
+    "updated_at": "2026-09-29T13:39:47.846Z",
     "notifications": []
   },
   {

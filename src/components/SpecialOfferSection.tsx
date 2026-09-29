@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Timer,
   ShoppingBag,
@@ -11,13 +11,17 @@ import {
   Plus,
 } from 'lucide-react';
 import { Product } from '../types/marketplace';
-import specialOfferBannerImg1 from '../assets/images/special_offer_emerald_headphones_1790626974829.jpg';
-import specialOfferBannerImg2 from '../assets/images/special_offer_b2b_wholesale_1790627764898.jpg';
-import specialOfferBannerImg3 from '../assets/images/special_offer_global_imports_1790627775866.jpg';
 import sneakerImg from '../assets/images/fashion_sneakers_product_1790256916173.jpg';
 import headphoneImg from '../assets/images/gadgets_headphones_product_1790256932369.jpg';
 import watchImg from '../assets/images/import_smartwatch_global_1790256962650.jpg';
 import wholesaleImg from '../assets/images/wholesale_bulk_supplies_1790256947667.jpg';
+import {
+  specialOfferService,
+  OFFERS_UPDATED_EVENT,
+  SpecialOfferItem,
+  getTimeRemaining,
+  TimeRemaining,
+} from '../services/specialOfferService';
 
 export interface OfferBannerItem {
   id: string;
@@ -29,6 +33,10 @@ export interface OfferBannerItem {
   ctaText: string;
   ctaAction?: () => void;
   targetSegment?: string;
+  badgeColor?: string;
+  startDate?: string;
+  expiryDate?: string;
+  status?: 'active' | 'scheduled' | 'expired' | 'paused';
 }
 
 interface SpecialOfferSectionProps {
@@ -36,6 +44,8 @@ interface SpecialOfferSectionProps {
   onAddToCart: (product: Product, quantity?: number) => void;
   onQuickView: (product: Product) => void;
   customBanners?: OfferBannerItem[];
+  onNavigateToOffer?: (offerId: string) => void;
+  allProducts?: Product[];
 }
 
 export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
@@ -43,67 +53,66 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
   onAddToCart,
   onQuickView,
   customBanners,
+  onNavigateToOffer,
+  allProducts,
 }) => {
-  // Live Countdown Timer (Ends in 02:14:36)
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 2,
-    minutes: 14,
-    seconds: 36,
+  // Helper to map service item to Banner item format
+  const mapOfferToBannerItem = (item: SpecialOfferItem): OfferBannerItem => ({
+    id: item.id,
+    tag: item.badgeText || 'SPECIAL OFFER',
+    title: item.campaignName,
+    subtitle: item.description,
+    ratingText: '★ 4.9',
+    image: item.bannerImage,
+    ctaText: item.ctaText || 'Shop Now',
+    targetSegment: item.targetSegment || 'retail',
+    badgeColor: item.badgeColor || '#0f766e',
+    startDate: item.startDate,
+    expiryDate: item.expiryDate,
+    status: item.status,
   });
 
+  const isOfferActive = (o: SpecialOfferItem | OfferBannerItem) => {
+    const rem = getTimeRemaining(o.expiryDate);
+    const st = 'status' in o ? o.status : 'active';
+    return !rem.isExpired && (!st || st === 'active');
+  };
+
+  // Dynamic Live Synced Offers State (Requirement #2: Auto-hide expired offers)
+  const [liveOffers, setLiveOffers] = useState<OfferBannerItem[]>(() => {
+    if (customBanners && customBanners.length > 0) {
+      return customBanners.filter((b) => !getTimeRemaining(b.expiryDate).isExpired);
+    }
+    const loaded = specialOfferService.getOffers();
+    const active = loaded.filter(isOfferActive);
+    return active.map(mapOfferToBannerItem);
+  });
+
+  // Listen to Admin Panel live updates (Requirement #3)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return { hours: 2, minutes: 30, seconds: 0 };
-      });
-    }, 1000);
+    if (customBanners && customBanners.length > 0) {
+      setLiveOffers(customBanners.filter((b) => !getTimeRemaining(b.expiryDate).isExpired));
+      return;
+    }
 
-    return () => clearInterval(timer);
-  }, []);
+    const syncOffers = () => {
+      const loaded = specialOfferService.getOffers();
+      const active = loaded.filter(isOfferActive);
+      setLiveOffers(active.map(mapOfferToBannerItem));
+    };
 
-  // Default Multiple Offer Banners
-  const defaultBanners: OfferBannerItem[] = [
-    {
-      id: 'banner-1',
-      tag: 'Special Offer',
-      title: 'Up to 50% OFF',
-      subtitle: 'Top Rated Products',
-      ratingText: '★ 4.9',
-      image: specialOfferBannerImg1,
-      ctaText: 'Shop Now',
-      targetSegment: 'retail',
-    },
-    {
-      id: 'banner-2',
-      tag: 'Factory Direct',
-      title: 'Save up to 45%',
-      subtitle: 'Bulk Wholesale Tiering',
-      ratingText: '★ 4.8',
-      image: specialOfferBannerImg2,
-      ctaText: 'View Wholesale',
-      targetSegment: 'wholesale',
-    },
-    {
-      id: 'banner-3',
-      tag: 'Global Imports',
-      title: 'Flat 40% OFF',
-      subtitle: 'Pre-Cleared Customs',
-      ratingText: '★ 5.0',
-      image: specialOfferBannerImg3,
-      ctaText: 'Browse Imports',
-      targetSegment: 'import',
-    },
-  ];
+    syncOffers();
 
-  // Active Banners
-  const banners = customBanners && customBanners.length > 0 ? customBanners : defaultBanners;
+    window.addEventListener(OFFERS_UPDATED_EVENT, syncOffers);
+    window.addEventListener('storage', syncOffers);
+
+    return () => {
+      window.removeEventListener(OFFERS_UPDATED_EVENT, syncOffers);
+      window.removeEventListener('storage', syncOffers);
+    };
+  }, [customBanners]);
+
+  const banners = liveOffers;
   const isMultiple = banners.length > 1;
 
   // Carousel & Drag State
@@ -111,6 +120,48 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const dragStartXRef = useRef<number | null>(null);
   const touchStartXRef = useRef<number | null>(null);
+
+  // Keep index within bounds if items change
+  useEffect(() => {
+    if (currentIndex >= banners.length && banners.length > 0) {
+      setCurrentIndex(0);
+    }
+  }, [banners.length, currentIndex]);
+
+  const activeBanner = banners[currentIndex] || banners[0] || {
+    id: 'default',
+    tag: 'SPECIAL OFFER',
+    title: 'Up to 50% OFF',
+    subtitle: 'Top Rated Products',
+    ratingText: '★ 4.9',
+    image: '',
+    ctaText: 'Shop Now',
+    targetSegment: 'retail',
+    badgeColor: '#0f766e',
+    expiryDate: '2026-12-31',
+  };
+
+  // Dynamic Live Countdown Timer calculated from activeBanner.expiryDate (Requirement #1)
+  const [timeLeft, setTimeLeft] = useState<TimeRemaining>(() =>
+    getTimeRemaining(activeBanner?.expiryDate)
+  );
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      if (!activeBanner) return;
+      const rem = getTimeRemaining(activeBanner.expiryDate);
+      setTimeLeft(rem);
+
+      // Requirement #2: When countdown reaches 00:00:00 (isExpired), auto-hide offer from homepage
+      if (rem.isExpired) {
+        setLiveOffers((prev) => prev.filter((b) => b.id !== activeBanner.id));
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [activeBanner?.id, activeBanner?.expiryDate]);
 
   // Auto-play interval (every 4.5 seconds if multiple banners exist)
   useEffect(() => {
@@ -177,123 +228,155 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
     setIsPaused(false);
   };
 
-  const activeBanner = banners[currentIndex] || banners[0];
+  const handleBannerClick = () => {
+    if (onNavigateToOffer && activeBanner.id) {
+      onNavigateToOffer(activeBanner.id);
+    } else if (activeBanner.ctaAction) {
+      activeBanner.ctaAction();
+    } else {
+      onShopNow(activeBanner.targetSegment);
+    }
+  };
 
-  // 4 Featured Deal Products matching screenshot (Desktop only)
-  const dealProducts: (Product & { discountPercent: number; rawPrice: number; rawOriginalPrice: number })[] = [
-    {
-      id: 'deal-phone',
-      title: 'Phone 16 Pro Max',
-      segment: 'wholesale',
-      category: 'Electronics & Tech',
-      price: 390.90,
-      rawPrice: 42999,
-      rawOriginalPrice: 48999,
-      discountPercent: 40,
-      rating: 4.9,
-      reviewsCount: 520,
-      image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&q=80&w=300',
-      seller: {
-        id: 'sel-deal-1',
-        name: 'Apex Wholesale BD',
-        badge: 'Verified Wholesaler',
-        verified: true,
-      },
-      inStock: true,
-      description: 'Titanium aerospace finish smartphone with advanced camera and fast charging.',
-    },
-    {
-      id: 'deal-headphones',
-      title: 'Sony Headphones',
-      segment: 'wholesale',
-      category: 'Electronics & Tech',
-      price: 136.35,
-      rawPrice: 14999,
-      rawOriginalPrice: 24999,
-      discountPercent: 40,
-      rating: 4.8,
-      reviewsCount: 318,
-      image: headphoneImg,
-      seller: {
-        id: 'sel-deal-2',
-        name: 'Apex Sound Labs',
-        badge: 'Top Tech Seller',
-        verified: true,
-      },
-      inStock: true,
-      description: 'Over-ear noise cancelling studio audio system with deep bass drivers.',
-    },
-    {
-      id: 'deal-skincare',
-      title: 'Skin Care Set',
-      segment: 'import',
-      category: 'Beauty & Health',
-      price: 11.80,
-      rawPrice: 1299,
-      rawOriginalPrice: 1899,
-      discountPercent: 30,
-      rating: 4.9,
-      reviewsCount: 188,
-      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=300',
-      seller: {
-        id: 'sel-deal-3',
-        name: 'Global Beauty Direct',
-        badge: 'Certified Importer',
-        verified: true,
-      },
-      inStock: true,
-      description: 'Organic hydration set with natural plant extracts and facial serum.',
-    },
-    {
-      id: 'deal-sneakers',
-      title: 'Nike Sneakers',
-      segment: 'retail',
-      category: 'Fashion & Apparel',
-      price: 24.50,
-      rawPrice: 2699,
-      rawOriginalPrice: 4499,
-      discountPercent: 40,
-      rating: 4.7,
-      reviewsCount: 420,
-      image: sneakerImg,
-      seller: {
-        id: 'sel-deal-4',
-        name: 'Sprint Footwear BD',
-        badge: 'Verified Retailer',
-        verified: true,
-      },
-      inStock: true,
-      description: 'Active mesh runner sneakers with air cushion midsole and grip outsole.',
-    },
-  ];
+  // Requirement #2: Top 4 Best Selling Products or Random 4 Products if no sales data
+  const dealProducts = useMemo(() => {
+    const source = allProducts && allProducts.length > 0 ? allProducts : [];
+    const sorted = [...source].sort((a, b) => {
+      const scoreA = (a.reviewsCount || 0) + (a.rating || 0) * 10 + (a.isBestProduct ? 500 : 0);
+      const scoreB = (b.reviewsCount || 0) + (b.rating || 0) * 10 + (b.isBestProduct ? 500 : 0);
+      return scoreB - scoreA;
+    });
+
+    const items = sorted.length >= 4 ? sorted.slice(0, 4) : source;
+
+    if (items.length === 0) {
+      return [
+        {
+          id: 'deal-phone',
+          title: 'Phone 16 Pro Max',
+          segment: 'wholesale' as const,
+          category: 'Electronics',
+          price: 390.90,
+          rawPrice: 42999,
+          rawOriginalPrice: 48999,
+          discountPercent: 40,
+          rating: 4.9,
+          reviewsCount: 520,
+          image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&q=80&w=300',
+          seller: { id: 's1', name: 'Apex Wholesale BD', badge: 'Verified', verified: true },
+          inStock: true,
+          description: 'Titanium aerospace finish smartphone.',
+        },
+        {
+          id: 'deal-headphones',
+          title: 'Sony Headphones',
+          segment: 'wholesale' as const,
+          category: 'Electronics',
+          price: 136.35,
+          rawPrice: 14999,
+          rawOriginalPrice: 24999,
+          discountPercent: 40,
+          rating: 4.8,
+          reviewsCount: 318,
+          image: headphoneImg,
+          seller: { id: 's2', name: 'Apex Sound Labs', badge: 'Top Seller', verified: true },
+          inStock: true,
+          description: 'Over-ear noise cancelling studio audio system.',
+        },
+        {
+          id: 'deal-watch',
+          title: 'Smartwatch Ultra Series',
+          segment: 'import' as const,
+          category: 'Wearables',
+          price: 72.50,
+          rawPrice: 7999,
+          rawOriginalPrice: 12999,
+          discountPercent: 38,
+          rating: 4.9,
+          reviewsCount: 245,
+          image: watchImg,
+          seller: { id: 's3', name: 'Global Imports', badge: 'Imported', verified: true },
+          inStock: true,
+          description: 'Amoled sports smartwatch with GPS.',
+        },
+        {
+          id: 'deal-sneakers',
+          title: 'AeroStride Sneakers',
+          segment: 'retail' as const,
+          category: 'Fashion',
+          price: 45.40,
+          rawPrice: 4999,
+          rawOriginalPrice: 7999,
+          discountPercent: 35,
+          rating: 4.7,
+          reviewsCount: 190,
+          image: sneakerImg,
+          seller: { id: 's4', name: 'Urban Sole', badge: 'Official', verified: true },
+          inStock: true,
+          description: 'Lightweight breathable running shoes.',
+        },
+      ];
+    }
+
+    return items.map((p) => {
+      const rawPrice = Math.round(p.price * 110);
+      const rawOriginalPrice = p.originalPrice ? Math.round(p.originalPrice * 110) : Math.round(rawPrice * 1.3);
+      const discountPercent = p.originalPrice && p.originalPrice > p.price
+        ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100)
+        : 25;
+      return {
+        ...p,
+        rawPrice,
+        rawOriginalPrice,
+        discountPercent: Math.max(10, Math.min(65, discountPercent)),
+      };
+    });
+  }, [allProducts]);
 
   const formatDigits = (n: number) => n.toString().padStart(2, '0');
 
+  // Requirement #1: If no active special offers exist, auto-hide section completely
+  if (!banners || banners.length === 0) {
+    return null;
+  }
+
   return (
     <section id="special-offers" className="py-3 sm:py-4 bg-[#f8fafc] border-b border-slate-200/60">
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6 space-y-3">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4 space-y-3">
         {/* ========================================================================= */}
-        {/* MOBILE VIEW: Interactive Carousel Banner Only (Bottom Grid Removed)       */}
-        {/* ========================================================================= */}
-        <div className="block md:hidden space-y-2">
-          {/* Mobile Interactive Special Offer Banner Card */}
+        {/* MOBILE VIEW: Interactive Carousel Banner Only (Ultra-Slim Format & Aspect Scaling) */}
+        <div className="block md:hidden space-y-1.5">
+          {/* Mobile Interactive Ultra-Slim Special Offer Banner Card */}
           <div
-            onClick={() => {
-              if (activeBanner.ctaAction) activeBanner.ctaAction();
-              else onShopNow(activeBanner.targetSegment);
-            }}
+            onClick={handleBannerClick}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
-            className="bg-gradient-to-r from-[#042f24] via-[#064e3b] to-[#0f766e] text-white p-4 rounded-2xl relative overflow-hidden shadow-md border border-teal-600/30 cursor-pointer active:scale-[0.99] transition-transform"
+            className="w-full bg-transparent rounded-2xl relative overflow-hidden shadow-md border border-slate-200/80 cursor-pointer active:scale-[0.99] transition-transform aspect-[3.5/1] sm:aspect-[4/1] min-h-[85px] max-h-[140px] flex flex-col justify-between p-2 sm:p-2.5 select-none"
           >
+            {/* Pure Original Banner Creative Image (Full Aspect Scaling, No Crop / No Clipping) */}
+            <img
+              key={activeBanner.id}
+              src={activeBanner.image}
+              alt={activeBanner.title}
+              className="absolute inset-0 w-full h-full object-contain object-center transition-all duration-500"
+            />
+
             {/* Top Row: Pill Badge (Left) + Countdown Timer (Right) */}
-            <div className="flex items-center justify-between pb-2 relative z-10">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+            <div className="flex items-center justify-between gap-1.5 pb-0.5 relative z-10">
+              <span
+                className="px-2 py-0.5 rounded-full text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-white shadow-md shrink-0"
+                style={{ backgroundColor: activeBanner.badgeColor || '#0f766e' }}
+              >
                 {activeBanner.tag}
               </span>
-              <div className="flex items-center gap-1 bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-md border border-white/15 text-[10px] font-mono text-white">
-                <span className="text-[9px] text-teal-200 font-sans mr-0.5">Ends in</span>
-                <span className="font-bold tabular-nums">{formatDigits(timeLeft.hours)}</span>
+              <div className="flex items-center gap-1 bg-black/75 backdrop-blur-xs px-1.5 sm:px-2 py-0.5 rounded-md border border-white/20 text-[8px] sm:text-[9px] font-mono text-white shadow-xs shrink-0">
+                <span className="text-[7.5px] sm:text-[8px] text-teal-200 font-sans mr-0.5">Ends in</span>
+                {timeLeft.days > 0 && (
+                  <span className="font-bold tabular-nums mr-0.5">{timeLeft.days}d</span>
+                )}
+                <span className="font-bold tabular-nums">
+                  {formatDigits(timeLeft.days > 0 ? timeLeft.hours % 24 : timeLeft.hours)}
+                </span>
                 <span>:</span>
                 <span className="font-bold tabular-nums">{formatDigits(timeLeft.minutes)}</span>
                 <span>:</span>
@@ -301,49 +384,25 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
               </div>
             </div>
 
-            {/* Main Content Row: Text & CTA on Left, Products Image on Right */}
-            <div className="flex items-center justify-between gap-2 relative z-10 pt-1">
-              <div className="space-y-1 max-w-[60%]">
-                <h3 className="text-lg font-black text-white font-display leading-tight tracking-tight">
-                  {activeBanner.title}
-                </h3>
-                <p className="text-[11px] font-medium text-emerald-100">
-                  {activeBanner.subtitle}
-                </p>
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (activeBanner.ctaAction) activeBanner.ctaAction();
-                      else onShopNow(activeBanner.targetSegment);
-                    }}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-bold text-slate-900 bg-white active:scale-95 rounded-full shadow-md transition-all cursor-pointer"
-                  >
-                    <span>{activeBanner.ctaText || 'Shop Now'}</span>
-                    <ArrowRight className="w-3 h-3 text-[#0f766e]" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Product Image Right */}
-              <div className="w-28 h-20 relative shrink-0">
-                <img
-                  key={activeBanner.id}
-                  src={activeBanner.image}
-                  alt={activeBanner.title}
-                  className="w-full h-full object-contain drop-shadow-md animate-in fade-in duration-500"
-                />
-              </div>
+            {/* Bottom Row: CTA Button on Right (No Crop, Compact & Fluid) */}
+            <div className="flex items-center justify-end relative z-10 pt-0.5 mt-auto">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBannerClick();
+                }}
+                className="inline-flex items-center justify-center gap-1 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[9.5px] sm:text-[10.5px] font-extrabold text-white bg-[#0f766e] hover:bg-[#064e3b] active:scale-95 rounded-full shadow-md transition-all cursor-pointer"
+              >
+                <span>{activeBanner.ctaText || 'Shop Now'}</span>
+                <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+              </button>
             </div>
-
-            {/* Background gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#042f24] via-transparent to-transparent pointer-events-none" />
           </div>
 
           {/* Mobile Pagination Dots Indicator */}
           {isMultiple && (
-            <div className="flex items-center justify-center gap-1.5 pt-1">
+            <div className="flex items-center justify-center gap-1.5 pt-0.5">
               {banners.map((_, idx) => (
                 <button
                   key={idx}
@@ -360,123 +419,103 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* DESKTOP VIEW: Interactive Carousel Banner + 4 Deal Cards                  */}
+        {/* DESKTOP VIEW: Interactive Carousel Banner + 4 Deal Cards (Ultra-Slim)     */}
         {/* ========================================================================= */}
-        <div className="hidden md:grid md:grid-cols-12 gap-3 sm:gap-3.5 items-stretch">
-          {/* LEFT: Dynamic Rectangular Carousel Banner (5 Cols on LG) */}
+        <div className="hidden md:grid md:grid-cols-12 gap-2.5 sm:gap-3 items-stretch">
+          {/* LEFT: Dynamic Ultra-Slim Rectangular Carousel Banner (5 Cols on LG) */}
           <div
-            onClick={() => {
-              if (activeBanner.ctaAction) activeBanner.ctaAction();
-              else onShopNow(activeBanner.targetSegment);
-            }}
+            onClick={handleBannerClick}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={handleMouseLeave}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
-            className={`md:col-span-5 bg-gradient-to-r from-[#042f24] via-[#064e3b] to-[#0f766e] text-white p-4 sm:p-5 relative overflow-hidden shadow-md flex flex-col justify-between min-h-[145px] sm:min-h-[155px] lg:min-h-[160px] rounded-2xl border border-teal-600/30 select-none cursor-pointer ${
+            className={`md:col-span-5 bg-transparent p-3 sm:p-3.5 relative overflow-hidden shadow-md flex flex-col justify-between min-h-[110px] sm:min-h-[118px] lg:min-h-[120px] rounded-2xl border border-slate-200/80 select-none cursor-pointer ${
               isMultiple ? 'group' : ''
             }`}
           >
-            {/* Background Image Slide with Smooth Transition */}
-            <div className="absolute right-0 top-0 bottom-0 w-3/5 sm:w-1/2 pointer-events-none overflow-hidden opacity-95">
-              <img
-                key={activeBanner.id}
-                src={activeBanner.image}
-                alt={activeBanner.title}
-                className="w-full h-full object-cover object-right transition-opacity duration-700 animate-in fade-in"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#042f24] via-[#042f24]/75 to-transparent" />
-            </div>
+            {/* Pure Original Banner Creative Image (No dark gradient overlay, 100% natural colors) */}
+            <img
+              key={activeBanner.id}
+              src={activeBanner.image}
+              alt={activeBanner.title}
+              className="absolute inset-0 w-full h-full object-cover object-center transition-all duration-500"
+            />
 
-            {/* Left Text Content */}
-            <div className="space-y-0.5 relative z-10 max-w-[58%]">
-              <div className="text-xs sm:text-sm font-extrabold text-emerald-200 tracking-wide flex items-center gap-1.5">
-                <span>{activeBanner.tag}</span>
+            {/* Top Row: Badge + Slide counter + Countdown Timer */}
+            <div className="relative z-10 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-white shadow-md"
+                  style={{ backgroundColor: activeBanner.badgeColor || '#0f766e' }}
+                >
+                  {activeBanner.tag}
+                </span>
                 {isMultiple && (
-                  <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-mono">
+                  <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.2 bg-black/60 backdrop-blur-xs text-white rounded font-mono shadow-xs">
                     {currentIndex + 1}/{banners.length}
                   </span>
                 )}
               </div>
-              <h2 className="text-base sm:text-lg lg:text-xl font-black text-white tracking-tight font-display leading-tight">
-                {activeBanner.title}
-              </h2>
-              <p className="text-[10px] sm:text-[11px] font-medium text-emerald-100/90 pt-0.5">
-                {activeBanner.subtitle}
-              </p>
 
-              {/* Colorful Rating Dots Indicator & Slide Indicators */}
-              <div className="flex items-center gap-2 pt-1">
-                <div className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-300" />
-                  <span className="text-[9px] text-emerald-200 font-bold ml-0.5">
-                    {activeBanner.ratingText || '★ 4.9'}
-                  </span>
-                </div>
-
-                {/* Carousel Pagination Dots (Only visible if multiple banners exist) */}
-                {isMultiple && (
-                  <div className="flex items-center gap-1 ml-2 bg-black/30 backdrop-blur-xs px-2 py-0.5 rounded-full border border-white/10">
-                    {banners.map((_, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCurrentIndex(idx);
-                        }}
-                        className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                          idx === currentIndex
-                            ? 'w-4 bg-emerald-400'
-                            : 'w-1.5 bg-white/40 hover:bg-white'
-                        }`}
-                        title={`Slide ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
+              {/* Countdown Badge */}
+              <div className="flex items-center gap-1 bg-black/70 backdrop-blur-xs px-2 py-0.5 rounded-lg border border-white/20 text-[9px] font-mono text-white shadow-xs">
+                <span className="text-[8px] text-teal-200 font-sans mr-0.5">Ends in</span>
+                {timeLeft.days > 0 && (
+                  <span className="font-bold tabular-nums mr-0.5">{timeLeft.days}d</span>
                 )}
+                <span className="font-bold tabular-nums">
+                  {formatDigits(timeLeft.days > 0 ? timeLeft.hours % 24 : timeLeft.hours)}
+                </span>
+                <span>:</span>
+                <span className="font-bold tabular-nums">{formatDigits(timeLeft.minutes)}</span>
+                <span>:</span>
+                <span className="font-bold tabular-nums text-amber-300 animate-pulse">
+                  {formatDigits(timeLeft.seconds)}
+                </span>
               </div>
             </div>
 
-            {/* Bottom Controls (Countdown Timer + Shop Now Button) */}
-            <div className="relative z-10 pt-1 flex items-end justify-between gap-2">
-              <div className="hidden sm:block" />
-
-              <div className="flex items-center gap-2 ml-auto flex-wrap">
-                {/* Countdown Badge */}
-                <div className="flex items-center gap-1 bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-white/15 text-[10px] font-mono text-white">
-                  <span className="text-[9px] text-teal-200 font-sans mr-0.5">Ends in</span>
-                  <span className="font-bold tabular-nums">{formatDigits(timeLeft.hours)}</span>
-                  <span>:</span>
-                  <span className="font-bold tabular-nums">{formatDigits(timeLeft.minutes)}</span>
-                  <span>:</span>
-                  <span className="font-bold tabular-nums text-amber-300 animate-pulse">
-                    {formatDigits(timeLeft.seconds)}
-                  </span>
+            {/* Bottom Row: Carousel Dots + CTA Button */}
+            <div className="relative z-10 pt-0.5 flex items-end justify-between gap-2 mt-auto">
+              {/* Carousel Pagination Dots */}
+              {isMultiple ? (
+                <div className="flex items-center gap-1 bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full border border-white/20 shadow-xs">
+                  {banners.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentIndex(idx);
+                      }}
+                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                        idx === currentIndex
+                          ? 'w-4 bg-emerald-400'
+                          : 'w-1.5 bg-white/60 hover:bg-white'
+                      }`}
+                      title={`Slide ${idx + 1}`}
+                    />
+                  ))}
                 </div>
+              ) : (
+                <div />
+              )}
 
-                {/* White Pill Button 'Shop Now →' */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (activeBanner.ctaAction) {
-                      activeBanner.ctaAction();
-                    } else {
-                      onShopNow(activeBanner.targetSegment);
-                    }
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold text-slate-900 bg-white hover:bg-emerald-50 active:scale-95 rounded-full shadow-md transition-all cursor-pointer group/btn"
-                >
-                  <span>{activeBanner.ctaText || 'Shop Now'}</span>
-                  <ArrowRight className="w-3 h-3 text-[#0f766e] group-hover/btn:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
+              {/* CTA Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBannerClick();
+                }}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 text-[11px] font-extrabold text-white bg-[#0f766e] hover:bg-[#064e3b] active:scale-95 rounded-full shadow-md transition-all cursor-pointer group/btn"
+              >
+                <span>{activeBanner.ctaText || 'Shop Now'}</span>
+                <ArrowRight className="w-3 h-3 text-white group-hover/btn:translate-x-0.5 transition-transform" />
+              </button>
             </div>
 
-            {/* Hover Arrow Controls (Only if Multiple Banners) */}
+            {/* Hover Arrow Controls */}
             {isMultiple && (
               <>
                 <button
@@ -485,7 +524,7 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
                     e.stopPropagation();
                     handlePrevSlide();
                   }}
-                  className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 hover:bg-[#0f766e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs border border-white/20 cursor-pointer z-20"
+                  className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 hover:bg-[#0f766e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs border border-white/20 cursor-pointer z-20 shadow-sm"
                   title="Previous Offer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
@@ -496,7 +535,7 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
                     e.stopPropagation();
                     handleNextSlide();
                   }}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 hover:bg-[#0f766e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs border border-white/20 cursor-pointer z-20"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 hover:bg-[#0f766e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs border border-white/20 cursor-pointer z-20 shadow-sm"
                   title="Next Offer"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -505,8 +544,8 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
             )}
           </div>
 
-          {/* RIGHT: 4 Deal Products (7 Cols on LG, Compact Height Matched with Banner) */}
-          <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 items-stretch">
+          {/* RIGHT: 4 Deal Products (7 Cols on LG, Compact Ultra-Slim Height Matched with Banner) */}
+          <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-2 items-stretch">
             {dealProducts.map((prod) => {
               const segmentBadge =
                 prod.segment === 'wholesale'
@@ -518,12 +557,12 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
               return (
                 <div
                   key={prod.id}
-                  className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 hover:border-teal-300 hover:shadow-xs transition-all p-2.5 flex flex-col justify-between group relative overflow-hidden min-h-[145px] sm:min-h-[155px] lg:min-h-[160px]"
+                  className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 hover:border-teal-300 hover:shadow-xs transition-all p-2 flex flex-col justify-between group relative overflow-hidden h-full min-h-[110px] sm:min-h-[118px] lg:min-h-[120px]"
                 >
                   {/* Top Segment Badge */}
                   <div className="flex items-center justify-between gap-1 z-10">
                     <span
-                      className={`px-1.5 py-0.2 text-[9px] font-bold rounded-md border ${segmentBadge.bg}`}
+                      className={`px-1.5 py-0.2 text-[8px] sm:text-[9px] font-bold rounded-md border ${segmentBadge.bg}`}
                     >
                       {segmentBadge.label}
                     </span>
@@ -532,12 +571,12 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
                   {/* Product Image */}
                   <div
                     onClick={() => onQuickView(prod)}
-                    className="h-16 sm:h-18 w-full my-0.5 flex items-center justify-center cursor-pointer overflow-hidden rounded-lg p-1"
+                    className="h-16 sm:h-18 w-full my-0.5 flex items-center justify-center cursor-pointer overflow-hidden rounded-lg bg-slate-50/20"
                   >
                     <img
                       src={prod.image}
                       alt={prod.title}
-                      className="max-h-full max-w-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
 
@@ -545,25 +584,25 @@ export const SpecialOfferSection: React.FC<SpecialOfferSectionProps> = ({
                   <div className="space-y-0.5">
                     <h3
                       onClick={() => onQuickView(prod)}
-                      className="font-bold text-[11px] sm:text-xs text-slate-800 group-hover:text-[#0f766e] transition-colors line-clamp-1 leading-tight cursor-pointer"
+                      className="font-bold text-[10px] sm:text-[11px] text-slate-800 group-hover:text-[#0f766e] transition-colors line-clamp-1 leading-tight cursor-pointer"
                       title={prod.title}
                     >
                       {prod.title}
                     </h3>
 
-                    {/* Price Row matching screenshot */}
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-[11px] sm:text-xs font-black text-slate-900 font-mono tabular-nums">
+                    {/* Price Row */}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[10px] sm:text-[11px] font-black text-slate-900 font-mono tabular-nums">
                         ৳ {prod.rawPrice.toLocaleString()}
                       </span>
-                      <span className="text-[9px] font-semibold text-slate-400 line-through font-mono tabular-nums">
+                      <span className="text-[8px] sm:text-[9px] font-semibold text-slate-400 line-through font-mono tabular-nums">
                         ৳ {prod.rawOriginalPrice.toLocaleString()}
                       </span>
                     </div>
 
                     {/* Red Discount Pill Badge */}
                     <div className="pt-0.5">
-                      <span className="inline-block px-1.5 py-0.2 text-[8px] sm:text-[9px] font-bold bg-rose-500 text-white rounded shadow-2xs">
+                      <span className="inline-block px-1.5 py-0.2 text-[7px] sm:text-[8px] font-bold bg-rose-500 text-white rounded shadow-2xs">
                         {prod.discountPercent}% OFF
                       </span>
                     </div>

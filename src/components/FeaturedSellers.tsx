@@ -14,7 +14,7 @@ export const FeaturedSellers: React.FC<FeaturedSellersProps> = ({
 }) => {
   return (
     <section id="sellers" className="py-8 sm:py-10 bg-white border-b border-slate-100">
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-5 lg:px-6">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
           <div>

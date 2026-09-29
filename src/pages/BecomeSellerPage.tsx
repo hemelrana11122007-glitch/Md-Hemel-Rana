@@ -217,7 +217,7 @@ export const BecomeSellerPage: React.FC<BecomeSellerPageProps> = ({
 
   return (
     <div className="py-12 bg-[#F8FAFA] min-h-[calc(100vh-200px)] font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-4 lg:px-4 space-y-10">
         
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-slate-500">
